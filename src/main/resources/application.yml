@@ -1,0 +1,37 @@
+telegram:
+  bot:
+    token: "7399299200:AAHtZJQp0mh-j3YJ-u6yRfn1X5QiUyMdgu8"
+    username: "TheNaIIsBot"
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/the_nails
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: always
+
+logging:
+  config: "classpath:logback.xml"
+
+email:
+  username: "the.nails.info@gmail.com"
+  password: "jpso zhdp pqsf qnrw"
+  smtp:
+    auth: true
+    starttls:
+      enable: true
+      required: true
+    host: "smtp.gmail.com"
+    port: 587
+    ssl:
+      trust: "*"
+      protocols: "TLSv1.2"
