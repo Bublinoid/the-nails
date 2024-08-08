@@ -10,10 +10,6 @@ import ru.bublinoid.thenails.utils.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -39,7 +35,14 @@ public class BookingService {
 
     public void handleEmailInput(long chatId, String email) {
         if (EmailValidator.isValid(email)) {
-            UUID hash = generateHash(chatId, email);
+            // Создание и сохранение объекта Email
+            Email emailEntity = new Email();
+            emailEntity.setChatId(chatId);
+            emailEntity.setEmail(email);
+
+            UUID hash = emailEntity.generateHash(); // Генерация хэша
+            emailEntity.setHash(hash);
+
             Optional<Email> existingEmail = emailRepository.findByHash(hash);
             if (existingEmail.isPresent()) {
                 logger.info("Email уже подтвержден для chatId: {}", chatId);
@@ -50,19 +53,15 @@ public class BookingService {
 
                 // Генерация и сохранение кода подтверждения
                 String confirmationCode = String.format("%04d", CodeGenerator.generateFourDigitCode());
-                Email emailEntity = Email.builder()
-                        .hash(hash)
-                        .chatId(chatId)
-                        .email(email)
-                        .confirmationCode(confirmationCode)
-                        .build();
-                emailRepository.save(emailEntity); // хэш будет обновлен автоматически
+                emailEntity.setConfirmationCode(confirmationCode);
+
+                emailRepository.save(emailEntity);
 
                 logger.info("Email и код подтверждения сохранены в базе данных: {} для chatId: {}", email, chatId);
 
                 // Отправка email с кодом подтверждения
                 String subject = "Ваш код подтверждения";
-                String content = "Ваш код подтверждения: " + confirmationCode;
+                String content = buildConfirmationEmailContent(confirmationCode);
                 emailSender.sendEmail(email, subject, content);
 
                 telegramBot.sendEmailSavedMessage(chatId);
@@ -71,6 +70,69 @@ public class BookingService {
             logger.warn("Получен недействительный email: {} от chatId: {}", email, chatId);
             telegramBot.sendInvalidEmailMessage(chatId);
         }
+    }
+
+    private String buildConfirmationEmailContent(String confirmationCode) {
+        return "<!DOCTYPE html>" +
+                "<html lang=\"ru\">" +
+                "<head>" +
+                "    <meta charset=\"UTF-8\">" +
+                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
+                "    <title>Подтверждение email</title>" +
+                "    <style>" +
+                "        body {" +
+                "            font-family: Arial, sans-serif;" +
+                "            background-color: #f4f4f9;" +
+                "            color: #333;" +
+                "        }" +
+                "        .container {" +
+                "            width: 80%;" +
+                "            margin: auto;" +
+                "            padding: 20px;" +
+                "            background-color: #ffffff;" +
+                "            border-radius: 8px;" +
+                "            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);" +
+                "        }" +
+                "        .header {" +
+                "            text-align: center;" +
+                "            padding-bottom: 20px;" +
+                "        }" +
+                "        .content {" +
+                "            font-size: 16px;" +
+                "            line-height: 1.6;" +
+                "        }" +
+                "        .code {" +
+                "            font-size: 24px;" +
+                "            font-weight: bold;" +
+                "            color: #d9534f;" +
+                "            text-align: center;" +
+                "            margin: 20px 0;" +
+                "        }" +
+                "        .footer {" +
+                "            text-align: center;" +
+                "            font-size: 12px;" +
+                "            color: #aaa;" +
+                "            margin-top: 20px;" +
+                "        }" +
+                "    </style>" +
+                "</head>" +
+                "<body>" +
+                "    <div class=\"container\">" +
+                "        <div class=\"header\">" +
+                "            <h1>Подтверждение email</h1>" +
+                "        </div>" +
+                "        <div class=\"content\">" +
+                "            <p>Здравствуйте,</p>" +
+                "            <p>Спасибо за регистрацию! Пожалуйста, используйте следующий код для подтверждения вашего email:</p>" +
+                "            <div class=\"code\">" + confirmationCode + "</div>" +
+                "            <p>Если вы не регистрировались у нас, пожалуйста, проигнорируйте это сообщение.</p>" +
+                "        </div>" +
+                "        <div class=\"footer\">" +
+                "            <p>С уважением,<br>Команда The Nails</p>" +
+                "        </div>" +
+                "    </div>" +
+                "</body>" +
+                "</html>";
     }
 
     public void confirmEmailCode(long chatId, String code) {
@@ -86,21 +148,6 @@ public class BookingService {
             }
         } else {
             logger.warn("Не найден email для chatId: {}", chatId);
-        }
-    }
-
-    private UUID generateHash(Long chatId, String email) {
-        String hashFieldValues = chatId.toString() + email.toUpperCase();
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(hashFieldValues.getBytes(Charset.forName("UTF-8")));
-
-            ByteBuffer byteBuffer = ByteBuffer.wrap(md.digest());
-            long high = byteBuffer.getLong();
-            long low = byteBuffer.getLong();
-            return new UUID(high, low);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("MD5 provider is required on your JVM");
         }
     }
 }

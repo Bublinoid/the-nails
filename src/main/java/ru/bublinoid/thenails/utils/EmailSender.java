@@ -49,19 +49,18 @@ public class EmailSender {
         });
 
         try {
-            Message message = new MimeMessage(session);
+            MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(username));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(subject);
-            message.setText(content);
+            message.setContent(content, "text/html; charset=UTF-8"); // Используем setContent для HTML-сообщений
 
             Transport.send(message);
 
             log.info("Email sent successfully");
 
         } catch (MessagingException e) {
-            System.err.println("Failed to send email: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to send email: " + e.getMessage(), e);
         }
     }
 }

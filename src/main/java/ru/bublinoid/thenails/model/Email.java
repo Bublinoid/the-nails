@@ -46,8 +46,16 @@ public class Email implements Historical {
     }
 
     @PrePersist
+    public void prePersist() {
+        if (this.hash == null) {
+            this.hash = generateHash();
+        }
+    }
+
     @PreUpdate
-    public void updateHash() {
-        this.hash = generateHash();
+    public void preUpdate() {
+        if (this.hash == null) {
+            this.hash = generateHash();
+        }
     }
 }
