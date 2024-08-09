@@ -10,10 +10,6 @@ public class BookingInfoProvider {
                 "Например: example@gmail.com";
     }
 
-    public String getVerificationCodeMessage() {
-        return "На ваш e-mail был отправлен код подтверждения. Пожалуйста, введите этот код для подтверждения.";
-    }
-
     public String getEmailConfirmedMessage() {
         return "Ваш e-mail успешно подтвержден! Мы готовы принять вашу запись.";
     }
@@ -28,5 +24,9 @@ public class BookingInfoProvider {
 
     public String getEmailSavedMessage() {
         return "Вам отправлен код подтверждения на вашу почту. Пожалуйста, введите этот код здесь.";
+    }
+
+    public String getInvalidConfirmationCodeFormatMessage() {
+        return "Код подтверждения должен состоять из 4 цифр.";
     }
 }

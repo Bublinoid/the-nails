@@ -1,7 +1,6 @@
 package ru.bublinoid.thenails.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import ru.bublinoid.thenails.model.Email;
 import ru.bublinoid.thenails.repository.EmailRepository;
@@ -11,6 +10,7 @@ import ru.bublinoid.thenails.utils.EmailSender;
 import ru.bublinoid.thenails.utils.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -46,7 +46,7 @@ public class EmailService {
             emailEntity.setHash(hash);
 
             Optional<Email> existingEmail = emailRepository.findByHash(hash);
-            if (existingEmail.isPresent()) {
+            if (existingEmail.isPresent() && existingEmail.get().getConfirm()) {
                 logger.info("Email уже подтвержден для chatId: {}", chatId);
                 telegramBot.sendEmailAlreadyConfirmedMessage(chatId);
             } else {
@@ -56,12 +56,13 @@ public class EmailService {
                 String confirmationCode = String.format("%04d", CodeGenerator.generateFourDigitCode());
                 emailEntity.setConfirmationCode(confirmationCode);
 
+                // Сохраняем в базу данных
                 emailRepository.save(emailEntity);
-
-                logger.info("Email и код подтверждения сохранены в базе данных: {} для chatId: {}", email, chatId);
 
                 String subject = "Ваш код подтверждения";
                 String content = buildConfirmationEmailContent(confirmationCode);
+
+                // Отправляем email
                 emailSender.sendEmail(email, subject, content);
 
                 telegramBot.sendEmailSavedMessage(chatId);
@@ -73,24 +74,35 @@ public class EmailService {
     }
 
     public void confirmEmailCode(long chatId, String code) {
-        Optional<Email> emailEntityOptional = emailRepository.findByChatId(chatId);
-        if (emailEntityOptional.isPresent()) {
-            Email emailEntity = emailEntityOptional.get();
-            if (emailEntity.getConfirmationCode().equals(code)) {
-                logger.info("Код подтверждения верный для chatId: {}", chatId);
-                telegramBot.sendEmailConfirmedMessage(chatId);
+        try {
+            int inputCode = Integer.parseInt(code);
+
+            Optional<Email> emailEntityOptional = emailRepository.findByChatId(chatId);
+            if (emailEntityOptional.isPresent()) {
+                Email emailEntity = emailEntityOptional.get();
+                int storedCode = Integer.parseInt(emailEntity.getConfirmationCode());
+                if (storedCode == inputCode) {
+                    emailEntity.setConfirm(true);
+                    emailRepository.save(emailEntity);
+                    logger.info("Код подтверждения верный для chatId: {}", chatId);
+                    telegramBot.sendEmailConfirmedMessage(chatId);
+                } else {
+                    logger.warn("Неверный код подтверждения для chatId: {}", chatId);
+                    telegramBot.sendInvalidConfirmationCodeMessage(chatId);
+                }
             } else {
-                logger.warn("Неверный код подтверждения для chatId: {}", chatId);
-                telegramBot.sendInvalidConfirmationCodeMessage(chatId);
+                logger.warn("Не найден email для chatId: {}", chatId);
+                telegramBot.sendInvalidEmailMessage(chatId);
             }
-        } else {
-            logger.warn("Не найден email для chatId: {}", chatId);
+        } catch (NumberFormatException e) {
+            logger.warn("Неправильный формат кода подтверждения для chatId: {}", chatId);
+            telegramBot.sendInvalidConfirmationCodeFormatMessage(chatId);
         }
     }
 
     private String buildConfirmationEmailContent(String confirmationCode) {
         try {
-            String template = new String(Files.readAllBytes(Paths.get("src/main/resources/template/confirmation_email_template.html")));
+            String template = new String(Files.readAllBytes(Paths.get("src/main/resources/email/confirmation_email_template.html")));
             return template.replace("{{confirmationCode}}", confirmationCode);
         } catch (IOException e) {
             logger.error("Ошибка чтения шаблона email", e);
