@@ -24,13 +24,14 @@ public class Email implements Historical {
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID hash;
 
-    @HashField
     private Long chatId;
 
     @HashField
     private String email;
 
     private String confirmationCode;
+
+    private Boolean confirm;
 
     @Column(name = "insert_dt", nullable = false)
     private LocalDateTime insertDt = LocalDateTime.now();

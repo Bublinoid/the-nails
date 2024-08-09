@@ -202,8 +202,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     public void sendInvalidConfirmationCodeMessage(long chatId) {
-        String message = "Неверный код подтверждения. Пожалуйста, попробуйте снова.";
+        String message = bookingInfoProvider.getInvalidCodeMessage();
         logger.info("Sending invalid confirmation code message to chatId: {}", chatId);
+        sendMarkdownMessage(chatId, message);
+    }
+
+    public void sendInvalidConfirmationCodeFormatMessage(long chatId) {
+        String message = bookingInfoProvider.getInvalidConfirmationCodeFormatMessage();
+        logger.info("Sending invalid confirmation code format message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
     }
 

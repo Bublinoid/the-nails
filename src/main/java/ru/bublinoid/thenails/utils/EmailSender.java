@@ -22,45 +22,44 @@ public class EmailSender {
     }
 
     public void sendEmail(String to, String subject, String content) {
-        final String username = emailConfig.getUsername();
-        final String password = emailConfig.getPassword();
-        final boolean smtpAuth = emailConfig.getSmtp().isAuth();
-        final boolean starttlsEnable = emailConfig.getSmtp().getStarttls().isEnable();
-        final boolean starttlsRequired = emailConfig.getSmtp().getStarttls().isRequired();
-        final String smtpHost = emailConfig.getSmtp().getHost();
-        final int smtpPort = emailConfig.getSmtp().getPort();
-        final String sslTrust = emailConfig.getSmtp().getSsl().getTrust();
-        final String sslProtocols = emailConfig.getSmtp().getSsl().getProtocols();
+        Properties mailProperties = getMailProperties();
+        Session session = createSession(mailProperties);
+        try {
+            MimeMessage message = createMessage(session, to, subject, content);
+            Transport.send(message);
+            log.info("Email sent successfully to {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
+        }
+    }
 
+    private Properties getMailProperties() {
         Properties props = new Properties();
-        props.put("mail.smtp.auth", smtpAuth);
-        props.put("mail.smtp.starttls.enable", starttlsEnable);
-        props.put("mail.smtp.starttls.required", starttlsRequired);
-        props.put("mail.smtp.host", smtpHost);
-        props.put("mail.smtp.port", smtpPort);
-        props.put("mail.smtp.ssl.trust", sslTrust);
-        props.put("mail.smtp.ssl.protocols", sslProtocols);
-        //props.put("mail.debug", "true");
+        props.put("mail.smtp.auth", emailConfig.getSmtp().isAuth());
+        props.put("mail.smtp.starttls.enable", emailConfig.getSmtp().getStarttls().isEnable());
+        props.put("mail.smtp.starttls.required", emailConfig.getSmtp().getStarttls().isRequired());
+        props.put("mail.smtp.host", emailConfig.getSmtp().getHost());
+        props.put("mail.smtp.port", emailConfig.getSmtp().getPort());
+        props.put("mail.smtp.ssl.trust", emailConfig.getSmtp().getSsl().getTrust());
+        props.put("mail.smtp.ssl.protocols", emailConfig.getSmtp().getSsl().getProtocols());
+        return props;
+    }
 
-        Session session = Session.getInstance(props, new jakarta.mail.Authenticator() {
+    private Session createSession(Properties props) {
+        return Session.getInstance(props, new jakarta.mail.Authenticator() {
+            @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(username, password);
+                return new PasswordAuthentication(emailConfig.getUsername(), emailConfig.getPassword());
             }
         });
+    }
 
-        try {
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(username));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-            message.setSubject(subject);
-            message.setContent(content, "text/html; charset=UTF-8"); // Используем setContent для HTML-сообщений
-
-            Transport.send(message);
-
-            log.info("Email sent successfully");
-
-        } catch (MessagingException e) {
-            log.error("Failed to send email: " + e.getMessage(), e);
-        }
+    private MimeMessage createMessage(Session session, String to, String subject, String content) throws MessagingException {
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(emailConfig.getUsername()));
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        message.setSubject(subject);
+        message.setContent(content, "text/html; charset=UTF-8");
+        return message;
     }
 }
