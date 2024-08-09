@@ -31,7 +31,7 @@ public class Email implements Historical {
 
     private String confirmationCode;
 
-    private Boolean confirm;
+    private Boolean confirm = false;
 
     @Column(name = "insert_dt", nullable = false)
     private LocalDateTime insertDt = LocalDateTime.now();
