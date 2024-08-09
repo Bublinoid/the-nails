@@ -43,4 +43,38 @@ public class InlineKeyboardMarkupBuilder {
 
         return keyboardMarkup;
     }
+
+    public InlineKeyboardMarkup createServiceOptionsKeyboard() {
+        InlineKeyboardButton manicureButton = new InlineKeyboardButton();
+        manicureButton.setText("Маникюр");
+        manicureButton.setCallbackData("manicure");
+
+        InlineKeyboardButton fileManicureButton = new InlineKeyboardButton();
+        fileManicureButton.setText("Пилочный маникюр");
+        fileManicureButton.setCallbackData("file_manicure");
+
+        InlineKeyboardButton complexButton = new InlineKeyboardButton();
+        complexButton.setText("Комплекс");
+        complexButton.setCallbackData("complex");
+
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        row1.add(manicureButton);
+
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(fileManicureButton);
+
+        List<InlineKeyboardButton> row3 = new ArrayList<>();
+        row3.add(complexButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row1);
+        rows.add(row2);
+        rows.add(row3);
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
 }
+
