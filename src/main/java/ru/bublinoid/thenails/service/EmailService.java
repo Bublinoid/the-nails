@@ -38,35 +38,44 @@ public class EmailService {
 
     public void handleEmailInput(long chatId, String email) {
         if (EmailValidator.isValid(email)) {
-            Email emailEntity = new Email();
-            emailEntity.setChatId(chatId);
-            emailEntity.setEmail(email);
+            Optional<Email> existingEmail = emailRepository.findByChatId(chatId);
 
-            UUID hash = emailEntity.generateHash();
-            emailEntity.setHash(hash);
-
-            Optional<Email> existingEmail = emailRepository.findByHash(hash);
-            if (existingEmail.isPresent() && existingEmail.get().getConfirm()) {
-                logger.info("Email уже подтвержден для chatId: {}", chatId);
-                telegramBot.sendEmailAlreadyConfirmedMessage(chatId);
+            Email emailEntity;
+            if (existingEmail.isPresent()) {
+                emailEntity = existingEmail.get();
+                if (emailEntity.getConfirm()) {
+                    logger.info("Email уже подтвержден для chatId: {}", chatId);
+                    telegramBot.sendEmailAlreadyConfirmedMessage(chatId);
+                    return;
+                }
             } else {
-                userEmails.put(chatId, email);
-                logger.info("Получен действительный email: {} от chatId: {}", email, chatId);
-
-                String confirmationCode = String.format("%04d", CodeGenerator.generateFourDigitCode());
-                emailEntity.setConfirmationCode(confirmationCode);
-
-                // Сохраняем в базу данных
-                emailRepository.save(emailEntity);
-
-                String subject = "Ваш код подтверждения";
-                String content = buildConfirmationEmailContent(confirmationCode);
-
-                // Отправляем email
-                emailSender.sendEmail(email, subject, content);
-
-                telegramBot.sendEmailSavedMessage(chatId);
+                // Создаем новый объект Email и генерируем хэш
+                emailEntity = new Email();
+                emailEntity.setChatId(chatId);
+                emailEntity.setEmail(email);
+                UUID hash = emailEntity.generateHash();
+                emailEntity.setHash(hash);
+                logger.info("Generated new hash for email input: {}", hash);
             }
+
+            userEmails.put(chatId, email);
+            logger.info("Получен действительный email: {} от chatId: {}", email, chatId);
+
+            String confirmationCode = String.format("%04d", CodeGenerator.generateFourDigitCode());
+            emailEntity.setConfirmationCode(confirmationCode);
+
+            // Сохраняем в базу данных
+            emailRepository.save(emailEntity);
+            logger.info("Сохранение email с хэшем: {}", emailEntity.getHash());
+
+            String subject = "Ваш код подтверждения";
+            String content = buildConfirmationEmailContent(confirmationCode);
+
+            // Отправляем email
+            emailSender.sendEmail(email, subject, content);
+            logger.info("Отправлен email на: {}", email);
+
+            telegramBot.sendEmailSavedMessage(chatId);
         } else {
             logger.warn("Получен недействительный email: {} от chatId: {}", email, chatId);
             telegramBot.sendInvalidEmailMessage(chatId);
