@@ -211,11 +211,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         String message = bookingInfoProvider.getInvalidConfirmationCodeFormatMessage();
         logger.info("Sending invalid confirmation code format message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
+        setAwaitingConfirmationCodeInput(chatId, true); // Устанавливаем ожидание ввода кода
     }
 
     public void sendEmailAlreadyConfirmedMessage(long chatId) {
         String message = "Ваш e-mail уже подтвержден.";
         logger.info("Sending email already confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
+    }
+
+    public void setAwaitingConfirmationCodeInput(long chatId, boolean awaiting) {
+        awaitingConfirmationCodeInput.put(chatId, awaiting);
     }
 }
