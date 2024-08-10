@@ -25,13 +25,15 @@ public class EmailService {
     private final EmailRepository emailRepository;
     private final EmailSender emailSender;
     private final TelegramBot telegramBot;
+    private final MessageService messageService;
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
     @Autowired
-    public EmailService(EmailRepository emailRepository, EmailSender emailSender, @Lazy TelegramBot telegramBot) {
+    public EmailService(EmailRepository emailRepository, EmailSender emailSender, @Lazy TelegramBot telegramBot, MessageService messageService) {
         this.emailRepository = emailRepository;
         this.emailSender = emailSender;
         this.telegramBot = telegramBot;
+        this.messageService = messageService;
     }
 
     @Transactional
@@ -41,14 +43,14 @@ public class EmailService {
 
             if (emailEntity.getConfirm()) {
                 logger.info("Email уже подтвержден для chatId: {}", chatId);
-                telegramBot.sendEmailAlreadyConfirmedMessage(chatId);
+                messageService.sendEmailAlreadyConfirmedMessage(chatId);
                 return;
             }
 
             saveEmailAndSendConfirmation(emailEntity, chatId, email);
         } else {
             logger.warn("Получен недействительный email: {} от chatId: {}", email, chatId);
-            telegramBot.sendInvalidEmailMessage(chatId);
+            messageService.sendInvalidEmailMessage(chatId);
         }
     }
 
@@ -57,7 +59,7 @@ public class EmailService {
         // Проверяем, что код состоит из 4 цифр
         if (code.length() != 4 || !code.matches("\\d{4}")) {
             logger.warn("Неправильный формат кода подтверждения для chatId: {}", chatId);
-            telegramBot.sendInvalidConfirmationCodeFormatMessage(chatId);
+            messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
             telegramBot.setAwaitingConfirmationCodeInput(chatId, true); // Ожидаем повторный ввод кода
             return;
         }
@@ -70,11 +72,11 @@ public class EmailService {
                 validateAndConfirmCode(emailEntityOptional.get(), inputCode, chatId);
             } else {
                 logger.warn("Не найден email для chatId: {}", chatId);
-                telegramBot.sendInvalidEmailMessage(chatId);
+                messageService.sendInvalidEmailMessage(chatId);
             }
         } catch (NumberFormatException e) {
             logger.warn("Неправильный формат кода подтверждения для chatId: {}", chatId);
-            telegramBot.sendInvalidConfirmationCodeFormatMessage(chatId);
+            messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
             telegramBot.setAwaitingConfirmationCodeInput(chatId, true); // Ожидаем повторный ввод кода
         }
     }
@@ -107,7 +109,7 @@ public class EmailService {
         emailSender.sendEmail(email, subject, content);
         logger.info("Отправлен email на: {}", email);
 
-        telegramBot.sendEmailSavedMessage(chatId);
+        messageService.sendEmailSavedMessage(chatId);
     }
 
     private void validateAndConfirmCode(Email emailEntity, int inputCode, long chatId) {
@@ -116,10 +118,10 @@ public class EmailService {
             emailEntity.setConfirm(true);
             emailRepository.save(emailEntity);
             logger.info("Код подтверждения верный для chatId: {}", chatId);
-            telegramBot.sendEmailConfirmedMessage(chatId);
+            messageService.sendEmailConfirmedMessage(chatId);
         } else {
             logger.warn("Неверный код подтверждения для chatId: {}", chatId);
-            telegramBot.sendInvalidConfirmationCodeMessage(chatId);
+            messageService.sendInvalidConfirmationCodeMessage(chatId);
             telegramBot.setAwaitingConfirmationCodeInput(chatId, true);
         }
     }
@@ -132,5 +134,11 @@ public class EmailService {
             logger.error("Ошибка чтения шаблона email", e);
             throw new RuntimeException("Ошибка чтения шаблона email", e);
         }
+    }
+
+    public UUID getHashByChatId(Long chatId) {
+        return emailRepository.findByChatId(chatId)
+                .map(Email::getHash)
+                .orElseThrow(() -> new IllegalArgumentException("Email not found for chatId: " + chatId));
     }
 }

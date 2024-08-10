@@ -2,15 +2,25 @@ package ru.bublinoid.thenails.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.bublinoid.thenails.model.Booking;
+import ru.bublinoid.thenails.repository.BookingRepository;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.UUID;
 
 
 @Service
 public class BookingService {
 
+    private final BookingRepository bookingRepository;
+
     private final EmailService emailService;
 
     @Autowired
-    public BookingService(EmailService emailService) {
+    public BookingService(BookingRepository bookingRepository, EmailService emailService) {
+        this.bookingRepository = bookingRepository;
         this.emailService = emailService;
     }
 
@@ -20,5 +30,25 @@ public class BookingService {
 
     public void confirmEmailCode(long chatId, String code) {
         emailService.confirmEmailCode(chatId, code);
+    }
+
+    public void saveBooking(Long chatId, String service, LocalDate date, LocalTime time) {
+        // Получаем существующий хеш из таблицы email по chatId
+        UUID existingHash = emailService.getHashByChatId(chatId);
+
+        if (existingHash == null) {
+            // Обработка ошибки, если хеш не найден
+            throw new IllegalArgumentException("Hash not found for chatId: " + chatId);
+        }
+
+        Booking booking = new Booking();
+        booking.setHash(existingHash); // Используем существующий хеш
+        booking.setChatId(chatId);
+        booking.setService(service);
+        booking.setDate(date);
+        booking.setTime(time);
+        booking.setConfirm(false); // Изначально запись не подтверждена
+
+        bookingRepository.save(booking);
     }
 }

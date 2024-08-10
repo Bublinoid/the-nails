@@ -1,22 +1,21 @@
 package ru.bublinoid.thenails.telegram;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import ru.bublinoid.thenails.config.BotConfig;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import ru.bublinoid.thenails.content.AboutUsInfoProvider;
+import ru.bublinoid.thenails.config.BotConfig;
 import ru.bublinoid.thenails.content.BookingInfoProvider;
-import ru.bublinoid.thenails.content.ServicesInfoProvider;
-import ru.bublinoid.thenails.content.ContactsInfoProvider;
-import ru.bublinoid.thenails.keyboard.InlineKeyboardMarkupBuilder;
 import ru.bublinoid.thenails.service.BookingService;
+import ru.bublinoid.thenails.service.MessageService;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,14 +25,22 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private static final Logger logger = LoggerFactory.getLogger(TelegramBot.class);
     private final BotConfig botConfig;
-    private final InlineKeyboardMarkupBuilder inlineKeyboardMarkupBuilder;
-    private final ServicesInfoProvider servicesInfoProvider;
-    private final AboutUsInfoProvider aboutUsInfoProvider;
-    private final ContactsInfoProvider contactsInfoProvider;
+    private final MessageService messageService;
     private final BookingService bookingService;
     private final BookingInfoProvider bookingInfoProvider;
     private final Map<Long, Boolean> awaitingEmailInput = new HashMap<>();
     private final Map<Long, Boolean> awaitingConfirmationCodeInput = new HashMap<>();
+    private final Map<Long, String> selectedServices = new HashMap<>();
+    private final Map<Long, String> selectedDates = new HashMap<>();
+    private final Map<Long, String> selectedTimes = new HashMap<>();
+    @Getter
+    private static final Map<String, String> serviceNames = new HashMap<>();
+
+    static {
+        serviceNames.put("manicure", "Маникюр");
+        serviceNames.put("file_manicure", "Пилочный маникюр");
+        serviceNames.put("complex", "Комплекс");
+    }
 
     @Override
     public String getBotUsername() {
@@ -77,41 +84,63 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         logger.info("Received callback query from chatId: {}, name: {}, data: {}", chatId, firstName, callbackData);
 
-        switch (callbackData) {
-            case "services":
-                sendServicesInfo(chatId, firstName);
-                break;
-            case "book":
-                requestEmailInput(chatId, firstName);
-                break;
-            case "about_us":
-                sendAboutUsInfo(chatId, firstName);
-                break;
-            case "contacts":
-                sendContactsInfo(chatId, firstName);
-                break;
-            case "manicure":
-                // Обработка выбора "Маникюр"
-                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Маникюр'");
-                break;
-            case "file_manicure":
-                // Обработка выбора "Пилочный маникюр"
-                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Пилочный маникюр'");
-                break;
-            case "complex":
-                // Обработка выбора "Комплекс"
-                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Комплекс'");
-                break;
-            default:
-                logger.warn("Unknown callback data: {}", callbackData);
-                break;
+        if (callbackData.startsWith("date_")) {
+            String selectedDate = callbackData.substring(5);
+            selectedDates.put(chatId, selectedDate);
+            messageService.sendTimeSelection(chatId, selectedDate);
+        } else if (callbackData.startsWith("time_")) {
+            String selectedTime = callbackData.substring(5);
+            selectedTimes.put(chatId, selectedTime);
+            confirmBooking(chatId);
+        } else if ("confirm_booking".equals(callbackData)) {
+            String service = TelegramBot.getServiceNames().getOrDefault(selectedServices.get(chatId), "Услуга не выбрана");
+            LocalDate date = LocalDate.parse(selectedDates.get(chatId));
+            LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
+
+            // Сохраняем бронирование в базе данных
+            bookingService.saveBooking(chatId, service, date, time);
+            messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
+        } else {
+            switch (callbackData) {
+                case "services":
+                    messageService.sendServicesInfo(chatId, firstName);
+                    break;
+                case "book":
+                    requestEmailInput(chatId, firstName);
+                    break;
+                case "about_us":
+                    messageService.sendAboutUsInfo(chatId, firstName);
+                    break;
+                case "contacts":
+                    messageService.sendContactsInfo(chatId, firstName);
+                    break;
+                case "manicure":
+                case "file_manicure":
+                case "complex":
+                    selectedServices.put(chatId, callbackData);
+                    messageService.sendDateSelection(chatId, callbackData);
+                    break;
+                default:
+                    logger.warn("Unknown callback data: {}", callbackData);
+                    break;
+            }
         }
     }
+
+    private void confirmBooking(long chatId) {
+        String service = TelegramBot.getServiceNames().getOrDefault(selectedServices.get(chatId), "Услуга не выбрана");
+        LocalDate date = LocalDate.parse(selectedDates.get(chatId));
+        LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
+
+        // Используем MessageService для отправки подтверждения
+        messageService.sendConfirmationRequest(chatId, service, date, time);
+    }
+
 
     private void processEmailInput(long chatId, String email) {
         awaitingEmailInput.put(chatId, false);
         bookingService.handleEmailInput(chatId, email);
-        awaitingConfirmationCodeInput.put(chatId, true); // Устанавливаем флаг ожидания ввода кода подтверждения
+        awaitingConfirmationCodeInput.put(chatId, true);
     }
 
     private void processConfirmationCodeInput(long chatId, String code) {
@@ -125,7 +154,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 startCommandReceived(chatId, firstName);
                 break;
             default:
-                sendMainMenu(chatId, firstName);
+                messageService.sendMainMenu(chatId, firstName);
                 break;
         }
     }
@@ -134,118 +163,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         String answer = "Здравствуйте, " + name + "!\n" +
                 "Добро пожаловать в наш бот записи на маникюр! Здесь вы сможете легко и быстро записаться на маникюр.";
         logger.info("Sending start command response to chatId: {}, name: {}", chatId, name);
-        sendMessageWithKeyboard(chatId, answer, inlineKeyboardMarkupBuilder.createMainMenuKeyboard());
-    }
-
-    private void sendServicesInfo(Long chatId, String name) {
-        String servicesInfo = servicesInfoProvider.getServicesInfo();
-        logger.info("Sending services info to chatId: {}, name: {}", chatId, name);
-        sendMarkdownMessage(chatId, servicesInfo);
-        sendMainMenu(chatId, name);
-    }
-
-    private void sendAboutUsInfo(Long chatId, String name) {
-        String aboutUsInfo = aboutUsInfoProvider.getAboutUsInfo();
-        logger.info("Sending about us info to chatId: {}, name: {}", chatId, name);
-        sendMarkdownMessage(chatId, aboutUsInfo);
-        sendMainMenu(chatId, name);
-    }
-
-    private void sendContactsInfo(Long chatId, String name) {
-        String contactsInfo = contactsInfoProvider.getContactsInfo();
-        logger.info("Sending contacts info to chatId: {}, name: {}", chatId, name);
-        sendMarkdownMessage(chatId, contactsInfo);
-        sendMainMenu(chatId, name);
-    }
-
-    private void sendMarkdownMessage(Long chatId, String textToSend) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(textToSend);
-        sendMessage.setParseMode("Markdown"); // Устанавливаем режим парсинга Markdown
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            logger.error("Error occurred while sending message: ", e);
-        }
+        messageService.sendMessageWithKeyboard(chatId, answer, messageService.createMainMenuKeyboard());
     }
 
     private void requestEmailInput(Long chatId, String name) {
         String bookingInfo = bookingInfoProvider.getRequestEmailMessage();
         logger.info("Requesting email input from chatId: {}, name: {}", chatId, name);
-        sendMarkdownMessage(chatId, bookingInfo);
-        awaitingEmailInput.put(chatId, true); // Устанавливаем флаг ожидания ввода e-mail
-    }
-
-    private void sendMessageWithKeyboard(Long chatId, String textToSend, InlineKeyboardMarkup keyboardMarkup) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(textToSend);
-        sendMessage.setReplyMarkup(keyboardMarkup);
-        sendMessage.setParseMode("Markdown");
-
-        try {
-            execute(sendMessage);
-            logger.info("Message with keyboard sent successfully to chatId: {}", chatId);
-        } catch (TelegramApiException e) {
-            logger.error("Error occurred while sending message with keyboard to chatId: {}", chatId, e);
-        }
-    }
-
-    private void sendMainMenu(Long chatId, String name) {
-        logger.info("Sending main menu to chatId: {}, name: {}", chatId, name);
-        sendMessageWithKeyboard(chatId, "Что бы вы хотели сделать дальше?", inlineKeyboardMarkupBuilder.createMainMenuKeyboard());
-    }
-
-    public void sendInvalidEmailMessage(long chatId) {
-        String message = bookingInfoProvider.getInvalidEmailMessage();
-        logger.info("Sending invalid email message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-    }
-
-    public void sendEmailSavedMessage(long chatId) {
-        String message = bookingInfoProvider.getEmailSavedMessage();
-        logger.info("Sending email saved message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-    }
-
-    public void sendEmailConfirmedMessage(long chatId) {
-        String message = bookingInfoProvider.getEmailConfirmedMessage();
-        logger.info("Sending email confirmed message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-
-        logger.info("Attempting to send service options to chatId: {}", chatId);
-        sendServiceOptions(chatId);
-    }
-
-    private void sendServiceOptions(long chatId) {
-        InlineKeyboardMarkup serviceOptionsKeyboard = inlineKeyboardMarkupBuilder.createServiceOptionsKeyboard();
-        if (serviceOptionsKeyboard != null && !serviceOptionsKeyboard.getKeyboard().isEmpty()) {
-            sendMessageWithKeyboard(chatId, "Пожалуйста, выберите одну из услуг:", serviceOptionsKeyboard);
-            logger.info("Service options sent successfully to chatId: {}", chatId);
-        } else {
-            logger.warn("Failed to create service options keyboard or keyboard is empty for chatId: {}", chatId);
-        }
-    }
-
-    public void sendInvalidConfirmationCodeMessage(long chatId) {
-        String message = bookingInfoProvider.getInvalidCodeMessage();
-        logger.info("Sending invalid confirmation code message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-    }
-
-    public void sendInvalidConfirmationCodeFormatMessage(long chatId) {
-        String message = bookingInfoProvider.getInvalidConfirmationCodeFormatMessage();
-        logger.info("Sending invalid confirmation code format message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-        setAwaitingConfirmationCodeInput(chatId, true); // Устанавливаем ожидание ввода кода
-    }
-
-    public void sendEmailAlreadyConfirmedMessage(long chatId) {
-        String message = "Ваш e-mail уже подтвержден.";
-        logger.info("Sending email already confirmed message to chatId: {}", chatId);
-        sendMarkdownMessage(chatId, message);
-        sendServiceOptions(chatId);
+        messageService.sendMarkdownMessage(chatId, bookingInfo);
+        awaitingEmailInput.put(chatId, true);
     }
 
     public void setAwaitingConfirmationCodeInput(long chatId, boolean awaiting) {
