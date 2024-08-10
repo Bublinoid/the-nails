@@ -245,6 +245,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         String message = "Ваш e-mail уже подтвержден.";
         logger.info("Sending email already confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
+        sendServiceOptions(chatId);
     }
 
     public void setAwaitingConfirmationCodeInput(long chatId, boolean awaiting) {
