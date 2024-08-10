@@ -104,5 +104,42 @@ public class InlineKeyboardMarkupBuilder {
         keyboardMarkup.setKeyboard(rows);
         return keyboardMarkup;
     }
+
+    public InlineKeyboardMarkup createTimeSelectionKeyboard() {
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        String[] times = {"10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
+
+        for (int i = 0; i < times.length; i += 3) {
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            for (int j = 0; j < 3 && i + j < times.length; j++) {
+                InlineKeyboardButton timeButton = new InlineKeyboardButton();
+                timeButton.setText(times[i + j]);
+                timeButton.setCallbackData("time_" + times[i + j]);
+                row.add(timeButton);
+            }
+            rows.add(row);
+        }
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+        return keyboardMarkup;
+    }
+
+    public InlineKeyboardMarkup createConfirmationKeyboard() {
+        InlineKeyboardButton confirmButton = new InlineKeyboardButton();
+        confirmButton.setText("Подтвердить запись");
+        confirmButton.setCallbackData("confirm_booking"); // Callback data для обработки нажатия кнопки
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(confirmButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
 }
 

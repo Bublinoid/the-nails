@@ -135,4 +135,10 @@ public class EmailService {
             throw new RuntimeException("Ошибка чтения шаблона email", e);
         }
     }
+
+    public UUID getHashByChatId(Long chatId) {
+        return emailRepository.findByChatId(chatId)
+                .map(Email::getHash)
+                .orElseThrow(() -> new IllegalArgumentException("Email not found for chatId: " + chatId));
+    }
 }

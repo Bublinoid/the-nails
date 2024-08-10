@@ -7,11 +7,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import ru.bublinoid.thenails.config.BotConfig;
 import ru.bublinoid.thenails.content.BookingInfoProvider;
 import ru.bublinoid.thenails.service.BookingService;
 import ru.bublinoid.thenails.service.MessageService;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +30,9 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final BookingInfoProvider bookingInfoProvider;
     private final Map<Long, Boolean> awaitingEmailInput = new HashMap<>();
     private final Map<Long, Boolean> awaitingConfirmationCodeInput = new HashMap<>();
+    private final Map<Long, String> selectedServices = new HashMap<>();
+    private final Map<Long, String> selectedDates = new HashMap<>();
+    private final Map<Long, String> selectedTimes = new HashMap<>();
     @Getter
     private static final Map<String, String> serviceNames = new HashMap<>();
 
@@ -77,28 +84,56 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         logger.info("Received callback query from chatId: {}, name: {}, data: {}", chatId, firstName, callbackData);
 
-        switch (callbackData) {
-            case "services":
-                messageService.sendServicesInfo(chatId, firstName);
-                break;
-            case "book":
-                requestEmailInput(chatId, firstName);
-                break;
-            case "about_us":
-                messageService.sendAboutUsInfo(chatId, firstName);
-                break;
-            case "contacts":
-                messageService.sendContactsInfo(chatId, firstName);
-                break;
-            case "manicure":
-            case "file_manicure":
-            case "complex":
-                messageService.sendDateSelection(chatId, callbackData);
-                break;
-            default:
-                logger.warn("Unknown callback data: {}", callbackData);
-                break;
+        if (callbackData.startsWith("date_")) {
+            String selectedDate = callbackData.substring(5);
+            selectedDates.put(chatId, selectedDate);
+            messageService.sendTimeSelection(chatId, selectedDate);
+        } else if (callbackData.startsWith("time_")) {
+            String selectedTime = callbackData.substring(5);
+            selectedTimes.put(chatId, selectedTime);
+            confirmBooking(chatId);
+        } else if ("confirm_booking".equals(callbackData)) {
+            String service = TelegramBot.getServiceNames().getOrDefault(selectedServices.get(chatId), "Услуга не выбрана");
+            LocalDate date = LocalDate.parse(selectedDates.get(chatId));
+            LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
+
+            // Сохраняем бронирование в базе данных
+            bookingService.saveBooking(chatId, service, date, time);
+            messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
+        } else {
+            switch (callbackData) {
+                case "services":
+                    messageService.sendServicesInfo(chatId, firstName);
+                    break;
+                case "book":
+                    requestEmailInput(chatId, firstName);
+                    break;
+                case "about_us":
+                    messageService.sendAboutUsInfo(chatId, firstName);
+                    break;
+                case "contacts":
+                    messageService.sendContactsInfo(chatId, firstName);
+                    break;
+                case "manicure":
+                case "file_manicure":
+                case "complex":
+                    selectedServices.put(chatId, callbackData);
+                    messageService.sendDateSelection(chatId, callbackData);
+                    break;
+                default:
+                    logger.warn("Unknown callback data: {}", callbackData);
+                    break;
+            }
         }
+    }
+
+    private void confirmBooking(long chatId) {
+        String service = TelegramBot.getServiceNames().getOrDefault(selectedServices.get(chatId), "Услуга не выбрана");
+        LocalDate date = LocalDate.parse(selectedDates.get(chatId));
+        LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
+
+        // Используем MessageService для отправки подтверждения
+        messageService.sendConfirmationRequest(chatId, service, date, time);
     }
 
 

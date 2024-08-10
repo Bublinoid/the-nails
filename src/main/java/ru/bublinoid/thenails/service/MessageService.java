@@ -16,6 +16,9 @@ import ru.bublinoid.thenails.content.ContactsInfoProvider;
 import ru.bublinoid.thenails.keyboard.InlineKeyboardMarkupBuilder;
 import ru.bublinoid.thenails.telegram.TelegramBot;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 @Service
 public class MessageService {
 
@@ -161,5 +164,19 @@ public class MessageService {
         InlineKeyboardMarkup dateKeyboard = inlineKeyboardMarkupBuilder.createDateSelectionKeyboard();
         sendMessageWithKeyboard(chatId, messageText, dateKeyboard);
         logger.info("Sent date selection for service: {} to chatId: {}", serviceName, chatId);
+    }
+
+    public void sendTimeSelection(Long chatId, String selectedDate) {
+        String messageText = "Выберите удобное время для даты: " + selectedDate;
+        InlineKeyboardMarkup timeKeyboard = inlineKeyboardMarkupBuilder.createTimeSelectionKeyboard();
+        sendMessageWithKeyboard(chatId, messageText, timeKeyboard);
+        logger.info("Sent time selection for date: {} to chatId: {}", selectedDate, chatId);
+    }
+
+    public void sendConfirmationRequest(Long chatId, String service, LocalDate date, LocalTime time) {
+        String confirmationMessage = "Вы выбрали услугу: " + service + " на дату: " + date + " в " + time;
+        InlineKeyboardMarkup confirmationKeyboard = inlineKeyboardMarkupBuilder.createConfirmationKeyboard();
+        sendMessageWithKeyboard(chatId, confirmationMessage, confirmationKeyboard);
+        logger.info("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
     }
 }

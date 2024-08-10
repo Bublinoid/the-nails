@@ -10,3 +10,17 @@ confirmation_code VARCHAR(4),
 confirm BOOLEAN,
 insert_dt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS the_nails.booking (
+                                                 hash UUID PRIMARY KEY,
+                                                 chat_id BIGINT NOT NULL,
+                                                 service VARCHAR(255) NOT NULL,
+                                                 date DATE NOT NULL,
+                                                 time TIME NOT NULL,
+                                                 confirm BOOLEAN DEFAULT FALSE,
+                                                 insert_dt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                                 CONSTRAINT fk_email
+                                                     FOREIGN KEY (hash)
+                                                         REFERENCES the_nails.email(hash)
+                                                         ON DELETE CASCADE
+);
