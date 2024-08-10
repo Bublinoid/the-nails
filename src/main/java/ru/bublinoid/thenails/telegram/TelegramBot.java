@@ -90,6 +90,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "contacts":
                 sendContactsInfo(chatId, firstName);
                 break;
+            case "manicure":
+                // Обработка выбора "Маникюр"
+                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Маникюр'");
+                break;
+            case "file_manicure":
+                // Обработка выбора "Пилочный маникюр"
+                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Пилочный маникюр'");
+                break;
+            case "complex":
+                // Обработка выбора "Комплекс"
+                sendMarkdownMessage(chatId, "Вы выбрали услугу 'Комплекс'");
+                break;
             default:
                 logger.warn("Unknown callback data: {}", callbackData);
                 break;
@@ -170,11 +182,13 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
         sendMessage.setReplyMarkup(keyboardMarkup);
-        sendMessage.setParseMode("Markdown"); // Устанавливаем режим парсинга Markdown для сообщений с клавиатурой
+        sendMessage.setParseMode("Markdown");
+
         try {
             execute(sendMessage);
+            logger.info("Message with keyboard sent successfully to chatId: {}", chatId);
         } catch (TelegramApiException e) {
-            logger.error("Error occurred while sending message: ", e);
+            logger.error("Error occurred while sending message with keyboard to chatId: {}", chatId, e);
         }
     }
 
@@ -199,6 +213,19 @@ public class TelegramBot extends TelegramLongPollingBot {
         String message = bookingInfoProvider.getEmailConfirmedMessage();
         logger.info("Sending email confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
+
+        logger.info("Attempting to send service options to chatId: {}", chatId);
+        sendServiceOptions(chatId);
+    }
+
+    private void sendServiceOptions(long chatId) {
+        InlineKeyboardMarkup serviceOptionsKeyboard = inlineKeyboardMarkupBuilder.createServiceOptionsKeyboard();
+        if (serviceOptionsKeyboard != null && !serviceOptionsKeyboard.getKeyboard().isEmpty()) {
+            sendMessageWithKeyboard(chatId, "Пожалуйста, выберите одну из услуг:", serviceOptionsKeyboard);
+            logger.info("Service options sent successfully to chatId: {}", chatId);
+        } else {
+            logger.warn("Failed to create service options keyboard or keyboard is empty for chatId: {}", chatId);
+        }
     }
 
     public void sendInvalidConfirmationCodeMessage(long chatId) {
@@ -218,6 +245,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         String message = "Ваш e-mail уже подтвержден.";
         logger.info("Sending email already confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
+        sendServiceOptions(chatId);
     }
 
     public void setAwaitingConfirmationCodeInput(long chatId, boolean awaiting) {
