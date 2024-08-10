@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 @Component
@@ -74,6 +76,32 @@ public class InlineKeyboardMarkupBuilder {
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
 
+        return keyboardMarkup;
+    }
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
+
+    public InlineKeyboardMarkup createDateSelectionKeyboard() {
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        LocalDate startDate = LocalDate.now();
+
+        for (int i = 0; i < 15; i++) {
+            LocalDate date = startDate.plusDays(i);
+            if (date.getDayOfWeek().getValue() >= 1 && date.getDayOfWeek().getValue() <= 5) {
+                InlineKeyboardButton dateButton = new InlineKeyboardButton();
+                dateButton.setText(date.format(DATE_FORMATTER));
+                dateButton.setCallbackData("date_" + date);
+
+                if (rows.isEmpty() || rows.get(rows.size() - 1).size() == 3) {
+                    rows.add(new ArrayList<>());
+                }
+
+                rows.get(rows.size() - 1).add(dateButton);
+            }
+        }
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
         return keyboardMarkup;
     }
 }

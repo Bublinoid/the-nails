@@ -154,4 +154,12 @@ public class MessageService {
         sendMarkdownMessage(chatId, message);
         sendServiceOptions(chatId);
     }
+
+    public void sendDateSelection(Long chatId, String serviceCallbackData) {
+        String serviceName = TelegramBot.getServiceNames().getOrDefault(serviceCallbackData, serviceCallbackData);
+        String messageText = "Выберите удобную дату для услуги: " + serviceName;
+        InlineKeyboardMarkup dateKeyboard = inlineKeyboardMarkupBuilder.createDateSelectionKeyboard();
+        sendMessageWithKeyboard(chatId, messageText, dateKeyboard);
+        logger.info("Sent date selection for service: {} to chatId: {}", serviceName, chatId);
+    }
 }

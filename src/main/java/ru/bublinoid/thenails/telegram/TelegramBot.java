@@ -1,6 +1,7 @@
 package ru.bublinoid.thenails.telegram;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final BookingInfoProvider bookingInfoProvider;
     private final Map<Long, Boolean> awaitingEmailInput = new HashMap<>();
     private final Map<Long, Boolean> awaitingConfirmationCodeInput = new HashMap<>();
+    @Getter
+    private static final Map<String, String> serviceNames = new HashMap<>();
+
+    static {
+        serviceNames.put("manicure", "Маникюр");
+        serviceNames.put("file_manicure", "Пилочный маникюр");
+        serviceNames.put("complex", "Комплекс");
+    }
 
     @Override
     public String getBotUsername() {
@@ -82,19 +91,16 @@ public class TelegramBot extends TelegramLongPollingBot {
                 messageService.sendContactsInfo(chatId, firstName);
                 break;
             case "manicure":
-                messageService.sendMarkdownMessage(chatId, "Вы выбрали услугу 'Маникюр'");
-                break;
             case "file_manicure":
-                messageService.sendMarkdownMessage(chatId, "Вы выбрали услугу 'Пилочный маникюр'");
-                break;
             case "complex":
-                messageService.sendMarkdownMessage(chatId, "Вы выбрали услугу 'Комплекс'");
+                messageService.sendDateSelection(chatId, callbackData);
                 break;
             default:
                 logger.warn("Unknown callback data: {}", callbackData);
                 break;
         }
     }
+
 
     private void processEmailInput(long chatId, String email) {
         awaitingEmailInput.put(chatId, false);
