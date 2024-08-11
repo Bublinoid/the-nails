@@ -108,12 +108,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (callbackData.startsWith("delete_")) {
             String[] parts = callbackData.substring(7).split("_");
             String service = parts[0];
-            LocalDate date = LocalDate.parse(parts[1]);
-            LocalTime time = LocalTime.parse(parts[2]);
-
-            // Удаление записи по идентификатору
+            String date = parts[1];
+            String time = parts[2];
+            messageService.sendDeleteConfirmation(chatId, service, date, time);
+        } else if (callbackData.startsWith("confirm_delete_")) {
+            String[] parts = callbackData.substring(15).split("_");
+            String service = parts[0];
+            String date = parts[1];
+            String time = parts[2];
             bookingService.deleteBookingByIdentifier(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Запись успешно удалена.");
+            messageService.sendMainMenu(chatId, firstName);
         } else {
             switch (callbackData) {
                 case "services":

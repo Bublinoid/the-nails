@@ -181,9 +181,15 @@ public class MessageService {
         logger.info("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
     }
 
-    public void sendDeleteConfirmation(Long chatId, String bookingHash) {
-        String confirmationMessage = String.format("Вы уверены, что хотите удалить эту запись? Нажмите /confirm_delete\\_%s", bookingHash);
-        sendMarkdownMessage(chatId, confirmationMessage);
+    public void sendDeleteConfirmation(Long chatId, String service, String date, String time) {
+        String confirmationMessage = String.format("Вы уверены, что хотите удалить запись на %s %s в %s?", service, date, time);
+        InlineKeyboardMarkup confirmationKeyboard = inlineKeyboardMarkupBuilder.createDeleteConfirmationKeyboard(service, date, time);
+        sendMessageWithKeyboard(chatId, confirmationMessage, confirmationKeyboard);
+    }
+
+    public void sendBookingsList(Long chatId, String bookingsInfo) {
+        InlineKeyboardMarkup keyboardMarkup = inlineKeyboardMarkupBuilder.createBookingsMenuKeyboard();
+        sendMessageWithKeyboard(chatId, bookingsInfo, keyboardMarkup);
     }
 
 }

@@ -79,15 +79,14 @@ public class BookingService {
                         .append(", Время: ").append(booking.getTime())
                         .append("\n");
 
-                // Добавляем кнопку "Удалить" с descriptive identifier в callback data
                 sb.append("Удалить запись: /delete_").append(bookingIdentifier).append("\n");
             }
             return sb.toString();
         }
     }
 
-    public void deleteBookingByIdentifier(Long chatId, String service, LocalDate date, LocalTime time) {
-        Optional<Booking> bookingOptional = bookingRepository.findByChatIdAndServiceAndDateAndTime(chatId, service, date, time);
+    public void deleteBookingByIdentifier(Long chatId, String service, String date, String time) {
+        Optional<Booking> bookingOptional = bookingRepository.findByChatIdAndServiceAndDateAndTime(chatId, service, LocalDate.parse(date), LocalTime.parse(time));
         if (bookingOptional.isPresent()) {
             bookingRepository.delete(bookingOptional.get());
         } else {

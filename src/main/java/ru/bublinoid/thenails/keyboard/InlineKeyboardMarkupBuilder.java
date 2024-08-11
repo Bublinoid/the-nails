@@ -149,5 +149,49 @@ public class InlineKeyboardMarkupBuilder {
 
         return keyboardMarkup;
     }
+
+    public InlineKeyboardMarkup createBookingsMenuKeyboard() {
+        InlineKeyboardButton deleteButton = new InlineKeyboardButton();
+        deleteButton.setText("Удалить запись");
+        deleteButton.setCallbackData("delete_");  // Пример данных callback, их следует подставить после получения информации о записи
+
+        InlineKeyboardButton mainMenuButton = new InlineKeyboardButton();
+        mainMenuButton.setText("Главное меню");
+        mainMenuButton.setCallbackData("main_menu");
+
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        row1.add(deleteButton);
+        row1.add(mainMenuButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row1);
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
+
+    public InlineKeyboardMarkup createDeleteConfirmationKeyboard(String service, String date, String time) {
+        InlineKeyboardButton confirmButton = new InlineKeyboardButton();
+        confirmButton.setText("Подтвердить удаление");
+        confirmButton.setCallbackData("confirm_delete_" + service + "_" + date + "_" + time);
+
+        InlineKeyboardButton cancelButton = new InlineKeyboardButton();
+        cancelButton.setText("Отмена");
+        cancelButton.setCallbackData("my_bookings");
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(confirmButton);
+        row.add(cancelButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
 }
 
