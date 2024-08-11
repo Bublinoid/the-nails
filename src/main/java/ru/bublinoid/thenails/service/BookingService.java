@@ -8,6 +8,7 @@ import ru.bublinoid.thenails.repository.BookingRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -62,6 +63,35 @@ public class BookingService {
             bookingRepository.save(booking);
         } else {
             throw new IllegalArgumentException("Booking not found for chatId: " + chatId + ", service: " + service + ", date: " + date + ", time: " + time);
+        }
+    }
+
+    public String getMyBookingsInfo(Long chatId) {
+        List<Booking> bookings = bookingRepository.findByChatIdAndConfirmTrue(chatId);
+        if (bookings.isEmpty()) {
+            return "У вас нет подтвержденных записей.";
+        } else {
+            StringBuilder sb = new StringBuilder("Ваши подтвержденные записи:\n");
+            for (Booking booking : bookings) {
+                String bookingIdentifier = String.format("%s_%s_%s", booking.getService(), booking.getDate(), booking.getTime());
+                sb.append("Услуга: ").append(booking.getService())
+                        .append(", Дата: ").append(booking.getDate())
+                        .append(", Время: ").append(booking.getTime())
+                        .append("\n");
+
+                // Добавляем кнопку "Удалить" с descriptive identifier в callback data
+                sb.append("Удалить запись: /delete_").append(bookingIdentifier).append("\n");
+            }
+            return sb.toString();
+        }
+    }
+
+    public void deleteBookingByIdentifier(Long chatId, String service, LocalDate date, LocalTime time) {
+        Optional<Booking> bookingOptional = bookingRepository.findByChatIdAndServiceAndDateAndTime(chatId, service, date, time);
+        if (bookingOptional.isPresent()) {
+            bookingRepository.delete(bookingOptional.get());
+        } else {
+            throw new IllegalArgumentException("Запись не найдена для chatId: " + chatId + ", услуга: " + service + ", дата: " + date + ", время: " + time);
         }
     }
 }

@@ -28,6 +28,10 @@ public class InlineKeyboardMarkupBuilder {
         contactsButton.setText("Контакты");
         contactsButton.setCallbackData("contacts");
 
+        InlineKeyboardButton myBookingsButton = new InlineKeyboardButton();
+        myBookingsButton.setText("Мои записи");
+        myBookingsButton.setCallbackData("my_bookings");
+
         List<InlineKeyboardButton> row1 = new ArrayList<>();
         row1.add(servicesButton);
         row1.add(bookButton);
@@ -36,9 +40,13 @@ public class InlineKeyboardMarkupBuilder {
         row2.add(aboutUsButton);
         row2.add(contactsButton);
 
+        List<InlineKeyboardButton> row3 = new ArrayList<>();
+        row3.add(myBookingsButton);
+
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         rows.add(row1);
         rows.add(row2);
+        rows.add(row3);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);

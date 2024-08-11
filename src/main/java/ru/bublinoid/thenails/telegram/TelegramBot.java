@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @AllArgsConstructor
@@ -101,6 +102,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             bookingService.saveBooking(chatId, service, date, time);
             bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
+        } else if ("my_bookings".equals(callbackData)) {
+            String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
+            messageService.sendMarkdownMessage(chatId, myBookingsInfo);
+        } else if (callbackData.startsWith("delete_")) {
+            String[] parts = callbackData.substring(7).split("_");
+            String service = parts[0];
+            LocalDate date = LocalDate.parse(parts[1]);
+            LocalTime time = LocalTime.parse(parts[2]);
+
+            // Удаление записи по идентификатору
+            bookingService.deleteBookingByIdentifier(chatId, service, date, time);
+            messageService.sendMarkdownMessage(chatId, "Запись успешно удалена.");
         } else {
             switch (callbackData) {
                 case "services":
