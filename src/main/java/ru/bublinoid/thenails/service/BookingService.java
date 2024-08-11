@@ -8,6 +8,7 @@ import ru.bublinoid.thenails.repository.BookingRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Optional;
 import java.util.UUID;
 
 
@@ -50,5 +51,17 @@ public class BookingService {
         booking.setConfirm(false); // Изначально запись не подтверждена
 
         bookingRepository.save(booking);
+    }
+
+    public void confirmBooking(Long chatId, String service, LocalDate date, LocalTime time) {
+        Optional<Booking> bookingOptional = bookingRepository.findByChatIdAndServiceAndDateAndTime(chatId, service, date, time);
+
+        if (bookingOptional.isPresent()) {
+            Booking booking = bookingOptional.get();
+            booking.setConfirm(true);
+            bookingRepository.save(booking);
+        } else {
+            throw new IllegalArgumentException("Booking not found for chatId: " + chatId + ", service: " + service + ", date: " + date + ", time: " + time);
+        }
     }
 }

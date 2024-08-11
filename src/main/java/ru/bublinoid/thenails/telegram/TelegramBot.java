@@ -99,6 +99,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             // Сохраняем бронирование в базе данных
             bookingService.saveBooking(chatId, service, date, time);
+            bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
         } else {
             switch (callbackData) {
