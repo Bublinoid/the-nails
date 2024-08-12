@@ -18,9 +18,6 @@ CREATE TABLE IF NOT EXISTS the_nails.booking (
                                                  date DATE NOT NULL,
                                                  time TIME NOT NULL,
                                                  confirm BOOLEAN DEFAULT FALSE,
-                                                 insert_dt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                                 CONSTRAINT fk_email
-                                                     FOREIGN KEY (hash)
-                                                         REFERENCES the_nails.email(hash)
-                                                         ON DELETE CASCADE
+                                                 insert_dt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
 );

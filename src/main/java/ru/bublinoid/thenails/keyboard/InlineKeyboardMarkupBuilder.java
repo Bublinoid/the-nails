@@ -1,19 +1,26 @@
 package ru.bublinoid.thenails.keyboard;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.bublinoid.thenails.model.Booking;
+import ru.bublinoid.thenails.service.BookingService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 @Component
 public class InlineKeyboardMarkupBuilder {
+
+    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
+
 
     public InlineKeyboardMarkup createMainMenuKeyboard() {
         InlineKeyboardButton servicesButton = new InlineKeyboardButton();
@@ -120,29 +127,51 @@ public class InlineKeyboardMarkupBuilder {
     }
 
     public InlineKeyboardMarkup createTimeSelectionKeyboard(LocalDate selectedDate, Set<LocalTime> occupiedTimes) {
-        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        String[] times = {"10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
+        logger.info("Occupied times for date {}: {}", selectedDate, occupiedTimes);
 
-        for (int i = 0; i < times.length; i += 3) {
-            List<InlineKeyboardButton> row = new ArrayList<>();
-            for (int j = 0; j < 3 && i + j < times.length; j++) {
-                LocalTime timeSlot = LocalTime.parse(times[i + j]);
-                if (!occupiedTimes.contains(timeSlot)) {
-                    InlineKeyboardButton timeButton = new InlineKeyboardButton();
-                    timeButton.setText(times[i + j]);
-                    timeButton.setCallbackData("time_" + times[i + j]);
-                    row.add(timeButton);
-                }
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        LocalTime startTime = LocalTime.of(10, 0);
+        LocalTime endTime = LocalTime.of(18, 0);
+
+        // Если выбранная дата - сегодня, начинаем с текущего времени плюс один час
+        if (selectedDate.equals(LocalDate.now())) {
+            LocalTime now = LocalTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1);
+            startTime = now.isAfter(startTime) ? now : startTime;
+        }
+
+        // Генерируем кнопки для доступных временных слотов
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        while (startTime.isBefore(endTime) || startTime.equals(endTime)) {
+            logger.info("Checking time slot: {}", startTime);
+            if (!occupiedTimes.contains(startTime)) {
+                InlineKeyboardButton timeButton = new InlineKeyboardButton();
+                timeButton.setText(startTime.toString());
+                timeButton.setCallbackData("time_" + startTime.toString());
+                row.add(timeButton);
+            } else {
+                logger.info("Time slot {} is occupied", startTime);
             }
-            if (!row.isEmpty()) {
-                rows.add(row);
+
+            // Добавляем ряд кнопок, если он заполнен (максимум 3 кнопки в ряду)
+            if (row.size() == 3) {
+                rows.add(new ArrayList<>(row));
+                row.clear();
             }
+
+            startTime = startTime.plusHours(1);
+        }
+
+        // Добавляем оставшиеся кнопки (если есть)
+        if (!row.isEmpty()) {
+            rows.add(row);
         }
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
+        logger.info("Generated time selection keyboard: {}", rows);
         return keyboardMarkup;
     }
+
 
     public InlineKeyboardMarkup createConfirmationKeyboard() {
         InlineKeyboardButton confirmButton = new InlineKeyboardButton();
