@@ -37,16 +37,8 @@ public class BookingService {
     }
 
     public void saveBooking(Long chatId, String service, LocalDate date, LocalTime time) {
-        // Получаем существующий хеш из таблицы email по chatId
-        UUID existingHash = emailService.getHashByChatId(chatId);
-
-        if (existingHash == null) {
-            // Обработка ошибки, если хеш не найден
-            throw new IllegalArgumentException("Hash not found for chatId: " + chatId);
-        }
-
         Booking booking = new Booking();
-        booking.setHash(existingHash); // Используем существующий хеш
+        booking.setHash(UUID.randomUUID()); // Генерация нового хеша для каждой новой записи
         booking.setChatId(chatId);
         booking.setService(service);
         booking.setDate(date);
