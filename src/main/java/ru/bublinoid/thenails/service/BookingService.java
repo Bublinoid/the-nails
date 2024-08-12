@@ -1,5 +1,7 @@
 package ru.bublinoid.thenails.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.bublinoid.thenails.model.Booking;
@@ -8,9 +10,9 @@ import ru.bublinoid.thenails.repository.BookingRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -19,6 +21,7 @@ public class BookingService {
     private final BookingRepository bookingRepository;
 
     private final EmailService emailService;
+    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
 
     @Autowired
     public BookingService(BookingRepository bookingRepository, EmailService emailService) {
@@ -35,16 +38,8 @@ public class BookingService {
     }
 
     public void saveBooking(Long chatId, String service, LocalDate date, LocalTime time) {
-        // Получаем существующий хеш из таблицы email по chatId
-        UUID existingHash = emailService.getHashByChatId(chatId);
-
-        if (existingHash == null) {
-            // Обработка ошибки, если хеш не найден
-            throw new IllegalArgumentException("Hash not found for chatId: " + chatId);
-        }
-
         Booking booking = new Booking();
-        booking.setHash(existingHash); // Используем существующий хеш
+        booking.setHash(UUID.randomUUID()); // Генерация нового хеша для каждой новой записи
         booking.setChatId(chatId);
         booking.setService(service);
         booking.setDate(date);
@@ -64,6 +59,41 @@ public class BookingService {
         } else {
             throw new IllegalArgumentException("Booking not found for chatId: " + chatId + ", service: " + service + ", date: " + date + ", time: " + time);
         }
+    }
+
+    public Set<LocalDate> getOccupiedDates() {
+        logger.info("Retrieving occupied dates");
+
+        // Получаем все записи с подтвержденными бронированиями
+        List<Booking> confirmedBookings = bookingRepository.findAll().stream()
+                .filter(Booking::getConfirm)
+                .toList();
+
+        // Выбираем только те даты, для которых уже все время занято
+        Set<LocalDate> occupiedDates = confirmedBookings.stream()
+                .collect(Collectors.groupingBy(Booking::getDate, Collectors.counting()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue() >= 9) // предполагается, что все слоты заняты, если 9 или более записей на дату
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+
+        logger.info("Occupied dates: {}", occupiedDates);
+        return occupiedDates;
+    }
+
+    public Set<LocalTime> getOccupiedTimesForDate(LocalDate date) {
+        logger.info("Retrieving occupied times for date: {}", date);
+
+        // Получаем все подтвержденные бронирования на указанную дату
+        List<Booking> bookings = bookingRepository.findByDateAndConfirmTrue(date);
+
+        // Извлекаем занятые временные слоты
+        Set<LocalTime> occupiedTimes = bookings.stream()
+                .map(Booking::getTime)
+                .collect(Collectors.toSet());
+
+        logger.info("Occupied times for date {}: {}", date, occupiedTimes);
+        return occupiedTimes;
     }
 
     public String getMyBookingsInfo(Long chatId) {

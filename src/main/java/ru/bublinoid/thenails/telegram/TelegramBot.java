@@ -17,10 +17,7 @@ import ru.bublinoid.thenails.service.MessageService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Component
 @AllArgsConstructor
@@ -90,7 +87,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (callbackData.startsWith("date_")) {
             String selectedDate = callbackData.substring(5);
             selectedDates.put(chatId, selectedDate);
-            messageService.sendTimeSelection(chatId, selectedDate);
+
+            Set<LocalTime> occupiedTimes = bookingService.getOccupiedTimesForDate(LocalDate.parse(selectedDate));
+            messageService.sendTimeSelection(chatId, selectedDate, occupiedTimes);
+
         } else if (callbackData.startsWith("time_")) {
             String selectedTime = callbackData.substring(5);
             selectedTimes.put(chatId, selectedTime);
@@ -104,6 +104,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             bookingService.saveBooking(chatId, service, date, time);
             bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
+            messageService.sendMainMenu(chatId, firstName);
+
         } else if (callbackData.equals("my_bookings")) {
             // Вывод списка записей
             String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
@@ -149,7 +151,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 case "file_manicure":
                 case "complex":
                     selectedServices.put(chatId, callbackData);
-                    messageService.sendDateSelection(chatId, callbackData);
+                    Set<LocalDate> occupiedDates = bookingService.getOccupiedDates();
+
+                    // Передаем список занятых дат в метод sendDateSelection
+                    messageService.sendDateSelection(chatId, occupiedDates);
                     break;
                 default:
                     logger.warn("Unknown callback data: {}", callbackData);

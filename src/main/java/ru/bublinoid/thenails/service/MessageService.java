@@ -20,6 +20,7 @@ import ru.bublinoid.thenails.telegram.TelegramBot;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class MessageService {
@@ -169,19 +170,14 @@ public class MessageService {
         sendServiceOptions(chatId);
     }
 
-    public void sendDateSelection(Long chatId, String serviceCallbackData) {
-        String serviceName = TelegramBot.getServiceNames().getOrDefault(serviceCallbackData, serviceCallbackData);
-        String messageText = "Выберите удобную дату для услуги: " + serviceName;
-        InlineKeyboardMarkup dateKeyboard = inlineKeyboardMarkupBuilder.createDateSelectionKeyboard();
-        sendMessageWithKeyboard(chatId, messageText, dateKeyboard);
-        logger.info("Sent date selection for service: {} to chatId: {}", serviceName, chatId);
+    public void sendDateSelection(Long chatId, Set<LocalDate> occupiedDates) {
+        InlineKeyboardMarkup dateKeyboard = inlineKeyboardMarkupBuilder.createDateSelectionKeyboard(occupiedDates);
+        sendMessageWithKeyboard(chatId, "Выберите удобную дату для услуги:", dateKeyboard);
     }
 
-    public void sendTimeSelection(Long chatId, String selectedDate) {
-        String messageText = "Выберите удобное время для даты: " + selectedDate;
-        InlineKeyboardMarkup timeKeyboard = inlineKeyboardMarkupBuilder.createTimeSelectionKeyboard();
-        sendMessageWithKeyboard(chatId, messageText, timeKeyboard);
-        logger.info("Sent time selection for date: {} to chatId: {}", selectedDate, chatId);
+    public void sendTimeSelection(Long chatId, String selectedDate, Set<LocalTime> occupiedTimes) {
+        InlineKeyboardMarkup timeKeyboard = inlineKeyboardMarkupBuilder.createTimeSelectionKeyboard(LocalDate.parse(selectedDate), occupiedTimes);
+        sendMessageWithKeyboard(chatId, "Выберите удобное время для даты: " + selectedDate, timeKeyboard);
     }
 
     public void sendConfirmationRequest(Long chatId, String service, LocalDate date, LocalTime time) {

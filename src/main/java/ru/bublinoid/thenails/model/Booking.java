@@ -39,11 +39,6 @@ public class Booking {
     @Column(name = "insert_dt", nullable = false, updatable = false)
     private LocalDateTime insertDt = LocalDateTime.now();
 
-    // Связь с сущностью Email (optional)
-    @OneToOne
-    @JoinColumn(name = "hash", referencedColumnName = "hash", insertable = false, updatable = false)
-    private Email email;
-
     @PrePersist
     public void prePersist() {
         if (this.hash == null) {
