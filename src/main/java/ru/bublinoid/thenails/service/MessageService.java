@@ -14,10 +14,12 @@ import ru.bublinoid.thenails.content.BookingInfoProvider;
 import ru.bublinoid.thenails.content.ServicesInfoProvider;
 import ru.bublinoid.thenails.content.ContactsInfoProvider;
 import ru.bublinoid.thenails.keyboard.InlineKeyboardMarkupBuilder;
+import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.telegram.TelegramBot;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Service
 public class MessageService {
@@ -52,6 +54,14 @@ public class MessageService {
 
     public InlineKeyboardMarkup createMainMenuKeyboard() {
         return inlineKeyboardMarkupBuilder.createMainMenuKeyboard();
+    }
+
+    public InlineKeyboardMarkup createBookingOptionsKeyboard() {
+        return inlineKeyboardMarkupBuilder.createBookingOptionsKeyboard();
+    }
+
+    public InlineKeyboardMarkup createBookingsKeyboard(List<Booking> bookings) {
+        return inlineKeyboardMarkupBuilder.createBookingsKeyboard(bookings);
     }
 
 
@@ -181,15 +191,5 @@ public class MessageService {
         logger.info("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
     }
 
-    public void sendDeleteConfirmation(Long chatId, String service, String date, String time) {
-        String confirmationMessage = String.format("Вы уверены, что хотите удалить запись на %s %s в %s?", service, date, time);
-        InlineKeyboardMarkup confirmationKeyboard = inlineKeyboardMarkupBuilder.createDeleteConfirmationKeyboard(service, date, time);
-        sendMessageWithKeyboard(chatId, confirmationMessage, confirmationKeyboard);
-    }
-
-    public void sendBookingsList(Long chatId, String bookingsInfo) {
-        InlineKeyboardMarkup keyboardMarkup = inlineKeyboardMarkupBuilder.createBookingsMenuKeyboard();
-        sendMessageWithKeyboard(chatId, bookingsInfo, keyboardMarkup);
-    }
 
 }

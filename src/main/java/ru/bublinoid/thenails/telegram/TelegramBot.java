@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import ru.bublinoid.thenails.config.BotConfig;
 import ru.bublinoid.thenails.content.BookingInfoProvider;
+import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.service.BookingService;
 import ru.bublinoid.thenails.service.MessageService;
 
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -102,23 +104,33 @@ public class TelegramBot extends TelegramLongPollingBot {
             bookingService.saveBooking(chatId, service, date, time);
             bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
-        } else if ("my_bookings".equals(callbackData)) {
+        } else if (callbackData.equals("my_bookings")) {
+            // Вывод списка записей
             String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
             messageService.sendMarkdownMessage(chatId, myBookingsInfo);
+
+            // Отправляем клавиатуру с кнопками "Удалить запись" и "Главное меню"
+            InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
+            messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
+        } else if (callbackData.equals("delete_booking")) {
+            // Вывод списка записей для удаления
+            List<Booking> bookings = bookingService.getBookingsByChatId(chatId);
+            InlineKeyboardMarkup keyboard = messageService.createBookingsKeyboard(bookings);
+            messageService.sendMessageWithKeyboard(chatId, "Выберите запись для удаления:", keyboard);
         } else if (callbackData.startsWith("delete_")) {
-            String[] parts = callbackData.substring(7).split("_");
-            String service = parts[0];
-            String date = parts[1];
-            String time = parts[2];
-            messageService.sendDeleteConfirmation(chatId, service, date, time);
-        } else if (callbackData.startsWith("confirm_delete_")) {
-            String[] parts = callbackData.substring(15).split("_");
-            String service = parts[0];
-            String date = parts[1];
-            String time = parts[2];
-            bookingService.deleteBookingByIdentifier(chatId, service, date, time);
-            messageService.sendMarkdownMessage(chatId, "Запись успешно удалена.");
+            // Обработка удаления записи по hash
+            try {
+                String bookingHash = callbackData.substring(7);
+                bookingService.deleteBookingByHash(UUID.fromString(bookingHash));
+                messageService.sendMarkdownMessage(chatId, "Запись успешно удалена.");
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid UUID string: {}", e.getMessage());
+                messageService.sendMarkdownMessage(chatId, "Произошла ошибка. Некорректный идентификатор записи.");
+            }
             messageService.sendMainMenu(chatId, firstName);
+        } else if (callbackData.equals("main_menu")) {
+            messageService.sendMainMenu(chatId, firstName);
+
         } else {
             switch (callbackData) {
                 case "services":

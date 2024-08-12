@@ -3,6 +3,7 @@ package ru.bublinoid.thenails.keyboard;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import ru.bublinoid.thenails.model.Booking;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -150,10 +151,10 @@ public class InlineKeyboardMarkupBuilder {
         return keyboardMarkup;
     }
 
-    public InlineKeyboardMarkup createBookingsMenuKeyboard() {
+    public InlineKeyboardMarkup createBookingOptionsKeyboard() {
         InlineKeyboardButton deleteButton = new InlineKeyboardButton();
         deleteButton.setText("Удалить запись");
-        deleteButton.setCallbackData("delete_");  // Пример данных callback, их следует подставить после получения информации о записи
+        deleteButton.setCallbackData("delete_booking");
 
         InlineKeyboardButton mainMenuButton = new InlineKeyboardButton();
         mainMenuButton.setText("Главное меню");
@@ -161,10 +162,13 @@ public class InlineKeyboardMarkupBuilder {
 
         List<InlineKeyboardButton> row1 = new ArrayList<>();
         row1.add(deleteButton);
-        row1.add(mainMenuButton);
+
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(mainMenuButton);
 
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         rows.add(row1);
+        rows.add(row2);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
@@ -172,21 +176,18 @@ public class InlineKeyboardMarkupBuilder {
         return keyboardMarkup;
     }
 
-    public InlineKeyboardMarkup createDeleteConfirmationKeyboard(String service, String date, String time) {
-        InlineKeyboardButton confirmButton = new InlineKeyboardButton();
-        confirmButton.setText("Подтвердить удаление");
-        confirmButton.setCallbackData("confirm_delete_" + service + "_" + date + "_" + time);
-
-        InlineKeyboardButton cancelButton = new InlineKeyboardButton();
-        cancelButton.setText("Отмена");
-        cancelButton.setCallbackData("my_bookings");
-
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(confirmButton);
-        row.add(cancelButton);
-
+    public InlineKeyboardMarkup createBookingsKeyboard(List<Booking> bookings) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        rows.add(row);
+
+        for (Booking booking : bookings) {
+            InlineKeyboardButton bookingButton = new InlineKeyboardButton();
+            bookingButton.setText(booking.getService() + " - " + booking.getDate() + " " + booking.getTime());
+            bookingButton.setCallbackData("delete_" + booking.getHash()); // Используем уникальный ID записи
+
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(bookingButton);
+            rows.add(row);
+        }
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
@@ -194,4 +195,6 @@ public class InlineKeyboardMarkupBuilder {
         return keyboardMarkup;
     }
 }
+
+
 
