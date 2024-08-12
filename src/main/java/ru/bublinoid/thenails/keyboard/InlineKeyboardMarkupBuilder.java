@@ -6,9 +6,12 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import ru.bublinoid.thenails.model.Booking;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
 @Component
 public class InlineKeyboardMarkupBuilder {
 
@@ -90,22 +93,24 @@ public class InlineKeyboardMarkupBuilder {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
 
-    public InlineKeyboardMarkup createDateSelectionKeyboard() {
+    public InlineKeyboardMarkup createDateSelectionKeyboard(Set<LocalDate> occupiedDates) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         LocalDate startDate = LocalDate.now();
 
         for (int i = 0; i < 15; i++) {
             LocalDate date = startDate.plusDays(i);
             if (date.getDayOfWeek().getValue() >= 1 && date.getDayOfWeek().getValue() <= 5) {
-                InlineKeyboardButton dateButton = new InlineKeyboardButton();
-                dateButton.setText(date.format(DATE_FORMATTER));
-                dateButton.setCallbackData("date_" + date);
+                if (!occupiedDates.contains(date)) {
+                    InlineKeyboardButton dateButton = new InlineKeyboardButton();
+                    dateButton.setText(date.format(DATE_FORMATTER));
+                    dateButton.setCallbackData("date_" + date);
 
-                if (rows.isEmpty() || rows.get(rows.size() - 1).size() == 3) {
-                    rows.add(new ArrayList<>());
+                    if (rows.isEmpty() || rows.get(rows.size() - 1).size() == 3) {
+                        rows.add(new ArrayList<>());
+                    }
+
+                    rows.get(rows.size() - 1).add(dateButton);
                 }
-
-                rows.get(rows.size() - 1).add(dateButton);
             }
         }
 
@@ -114,19 +119,24 @@ public class InlineKeyboardMarkupBuilder {
         return keyboardMarkup;
     }
 
-    public InlineKeyboardMarkup createTimeSelectionKeyboard() {
+    public InlineKeyboardMarkup createTimeSelectionKeyboard(LocalDate selectedDate, Set<LocalTime> occupiedTimes) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         String[] times = {"10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"};
 
         for (int i = 0; i < times.length; i += 3) {
             List<InlineKeyboardButton> row = new ArrayList<>();
             for (int j = 0; j < 3 && i + j < times.length; j++) {
-                InlineKeyboardButton timeButton = new InlineKeyboardButton();
-                timeButton.setText(times[i + j]);
-                timeButton.setCallbackData("time_" + times[i + j]);
-                row.add(timeButton);
+                LocalTime timeSlot = LocalTime.parse(times[i + j]);
+                if (!occupiedTimes.contains(timeSlot)) {
+                    InlineKeyboardButton timeButton = new InlineKeyboardButton();
+                    timeButton.setText(times[i + j]);
+                    timeButton.setCallbackData("time_" + times[i + j]);
+                    row.add(timeButton);
+                }
             }
-            rows.add(row);
+            if (!row.isEmpty()) {
+                rows.add(row);
+            }
         }
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
