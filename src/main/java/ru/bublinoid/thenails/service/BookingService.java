@@ -69,29 +69,31 @@ public class BookingService {
     public String getMyBookingsInfo(Long chatId) {
         List<Booking> bookings = bookingRepository.findByChatIdAndConfirmTrue(chatId);
         if (bookings.isEmpty()) {
-            return "У вас нет подтвержденных записей.";
+            return "У вас нет записей.";
         } else {
-            StringBuilder sb = new StringBuilder("Ваши подтвержденные записи:\n");
+            StringBuilder sb = new StringBuilder("Ваши записи:\n");
             for (Booking booking : bookings) {
-                String bookingIdentifier = String.format("%s_%s_%s", booking.getService(), booking.getDate(), booking.getTime());
                 sb.append("Услуга: ").append(booking.getService())
                         .append(", Дата: ").append(booking.getDate())
                         .append(", Время: ").append(booking.getTime())
                         .append("\n");
-
-                // Добавляем кнопку "Удалить" с descriptive identifier в callback data
-                sb.append("Удалить запись: /delete_").append(bookingIdentifier).append("\n");
             }
             return sb.toString();
         }
     }
 
-    public void deleteBookingByIdentifier(Long chatId, String service, LocalDate date, LocalTime time) {
-        Optional<Booking> bookingOptional = bookingRepository.findByChatIdAndServiceAndDateAndTime(chatId, service, date, time);
+    public void deleteBookingByHash(UUID hash) {
+        Optional<Booking> bookingOptional = bookingRepository.findByHash(hash);
+
         if (bookingOptional.isPresent()) {
             bookingRepository.delete(bookingOptional.get());
         } else {
-            throw new IllegalArgumentException("Запись не найдена для chatId: " + chatId + ", услуга: " + service + ", дата: " + date + ", время: " + time);
+            throw new IllegalArgumentException("Запись не найдена для hash: " + hash);
         }
     }
+
+    public List<Booking> getBookingsByChatId(long chatId) {
+        return bookingRepository.findByChatIdAndConfirmTrue(chatId);
+    }
+
 }

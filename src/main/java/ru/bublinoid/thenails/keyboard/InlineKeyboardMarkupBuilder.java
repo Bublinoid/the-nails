@@ -3,6 +3,7 @@ package ru.bublinoid.thenails.keyboard;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import ru.bublinoid.thenails.model.Booking;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -149,5 +150,51 @@ public class InlineKeyboardMarkupBuilder {
 
         return keyboardMarkup;
     }
+
+    public InlineKeyboardMarkup createBookingOptionsKeyboard() {
+        InlineKeyboardButton deleteButton = new InlineKeyboardButton();
+        deleteButton.setText("Удалить запись");
+        deleteButton.setCallbackData("delete_booking");
+
+        InlineKeyboardButton mainMenuButton = new InlineKeyboardButton();
+        mainMenuButton.setText("Главное меню");
+        mainMenuButton.setCallbackData("main_menu");
+
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        row1.add(deleteButton);
+
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(mainMenuButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row1);
+        rows.add(row2);
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
+
+    public InlineKeyboardMarkup createBookingsKeyboard(List<Booking> bookings) {
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
+        for (Booking booking : bookings) {
+            InlineKeyboardButton bookingButton = new InlineKeyboardButton();
+            bookingButton.setText(booking.getService() + " - " + booking.getDate() + " " + booking.getTime());
+            bookingButton.setCallbackData("delete_" + booking.getHash()); // Используем уникальный ID записи
+
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(bookingButton);
+            rows.add(row);
+        }
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
 }
+
+
 
