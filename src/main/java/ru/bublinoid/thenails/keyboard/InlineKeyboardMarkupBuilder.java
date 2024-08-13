@@ -31,6 +31,10 @@ public class InlineKeyboardMarkupBuilder {
         bookButton.setText("Записаться");
         bookButton.setCallbackData("book");
 
+        InlineKeyboardButton discountButton = new InlineKeyboardButton();
+        discountButton.setText("Скидка");
+        discountButton.setCallbackData("discount");
+
         InlineKeyboardButton aboutUsButton = new InlineKeyboardButton();
         aboutUsButton.setText("О нас");
         aboutUsButton.setCallbackData("about_us");
@@ -48,16 +52,20 @@ public class InlineKeyboardMarkupBuilder {
         row1.add(bookButton);
 
         List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(discountButton);
         row2.add(aboutUsButton);
-        row2.add(contactsButton);
 
         List<InlineKeyboardButton> row3 = new ArrayList<>();
-        row3.add(myBookingsButton);
+        row3.add(contactsButton);
+
+        List<InlineKeyboardButton> row4 = new ArrayList<>();
+        row4.add(myBookingsButton);
 
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         rows.add(row1);
         rows.add(row2);
         rows.add(row3);
+        rows.add(row4);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
@@ -237,6 +245,23 @@ public class InlineKeyboardMarkupBuilder {
             row.add(bookingButton);
             rows.add(row);
         }
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
+
+    public InlineKeyboardMarkup createPlayButtonKeyboard() {
+        InlineKeyboardButton playButton = new InlineKeyboardButton();
+        playButton.setText("Играть");
+        playButton.setCallbackData("play_discount_game");
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(playButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
