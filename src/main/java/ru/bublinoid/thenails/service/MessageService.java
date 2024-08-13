@@ -1,6 +1,5 @@
 package ru.bublinoid.thenails.service;
 
-import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,10 +8,7 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import ru.bublinoid.thenails.content.AboutUsInfoProvider;
-import ru.bublinoid.thenails.content.BookingInfoProvider;
-import ru.bublinoid.thenails.content.ServicesInfoProvider;
-import ru.bublinoid.thenails.content.ContactsInfoProvider;
+import ru.bublinoid.thenails.content.*;
 import ru.bublinoid.thenails.keyboard.InlineKeyboardMarkupBuilder;
 import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.telegram.TelegramBot;
@@ -34,17 +30,20 @@ public class MessageService {
     private final ContactsInfoProvider contactsInfoProvider;
     private final BookingInfoProvider bookingInfoProvider;
 
+    private final DiscountInfoProvider discountInfoProvider;
+
     @Autowired
     public MessageService(InlineKeyboardMarkupBuilder inlineKeyboardMarkupBuilder,
                           ServicesInfoProvider servicesInfoProvider,
                           AboutUsInfoProvider aboutUsInfoProvider,
                           ContactsInfoProvider contactsInfoProvider,
-                          BookingInfoProvider bookingInfoProvider) {
+                          BookingInfoProvider bookingInfoProvider, DiscountInfoProvider discountInfoProvider) {
         this.inlineKeyboardMarkupBuilder = inlineKeyboardMarkupBuilder;
         this.servicesInfoProvider = servicesInfoProvider;
         this.aboutUsInfoProvider = aboutUsInfoProvider;
         this.contactsInfoProvider = contactsInfoProvider;
         this.bookingInfoProvider = bookingInfoProvider;
+        this.discountInfoProvider = discountInfoProvider;
     }
 
     @Lazy
@@ -185,6 +184,13 @@ public class MessageService {
         InlineKeyboardMarkup confirmationKeyboard = inlineKeyboardMarkupBuilder.createConfirmationKeyboard();
         sendMessageWithKeyboard(chatId, confirmationMessage, confirmationKeyboard);
         logger.info("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
+    }
+
+    public void sendDiscountInfo(Long chatId) {
+        String discountInfo = discountInfoProvider.getDiscountInfo();
+        logger.info("Sending discount info to chatId: {}", chatId);
+        InlineKeyboardMarkup playButtonKeyboard = inlineKeyboardMarkupBuilder.createPlayButtonKeyboard();
+        sendMessageWithKeyboard(chatId, discountInfo, playButtonKeyboard);
     }
 
 

@@ -31,6 +31,10 @@ public class InlineKeyboardMarkupBuilder {
         bookButton.setText("Записаться");
         bookButton.setCallbackData("book");
 
+        InlineKeyboardButton discountButton = new InlineKeyboardButton();
+        discountButton.setText("Скидка");
+        discountButton.setCallbackData("discount");
+
         InlineKeyboardButton aboutUsButton = new InlineKeyboardButton();
         aboutUsButton.setText("О нас");
         aboutUsButton.setCallbackData("about_us");
@@ -48,16 +52,20 @@ public class InlineKeyboardMarkupBuilder {
         row1.add(bookButton);
 
         List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(discountButton);
         row2.add(aboutUsButton);
-        row2.add(contactsButton);
 
         List<InlineKeyboardButton> row3 = new ArrayList<>();
-        row3.add(myBookingsButton);
+        row3.add(contactsButton);
+
+        List<InlineKeyboardButton> row4 = new ArrayList<>();
+        row4.add(myBookingsButton);
 
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         rows.add(row1);
         rows.add(row2);
         rows.add(row3);
+        rows.add(row4);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
@@ -103,9 +111,18 @@ public class InlineKeyboardMarkupBuilder {
     public InlineKeyboardMarkup createDateSelectionKeyboard(Set<LocalDate> occupiedDates) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         LocalDate startDate = LocalDate.now();
+        LocalTime currentTime = LocalTime.now();
+        LocalTime cutoffTime = LocalTime.of(18, 0);
 
         for (int i = 0; i < 15; i++) {
             LocalDate date = startDate.plusDays(i);
+
+            // Check if the date is today and if the current time is after 18:00
+            if (date.equals(startDate) && currentTime.isAfter(cutoffTime)) {
+                logger.info("Skipping today's date {} because the current time is after 18:00", date);
+                continue;
+            }
+
             if (date.getDayOfWeek().getValue() >= 1 && date.getDayOfWeek().getValue() <= 5) {
                 if (!occupiedDates.contains(date)) {
                     InlineKeyboardButton dateButton = new InlineKeyboardButton();
@@ -125,6 +142,7 @@ public class InlineKeyboardMarkupBuilder {
         keyboardMarkup.setKeyboard(rows);
         return keyboardMarkup;
     }
+
 
     public InlineKeyboardMarkup createTimeSelectionKeyboard(LocalDate selectedDate, Set<LocalTime> occupiedTimes) {
         logger.info("Occupied times for date {}: {}", selectedDate, occupiedTimes);
@@ -227,6 +245,23 @@ public class InlineKeyboardMarkupBuilder {
             row.add(bookingButton);
             rows.add(row);
         }
+
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        keyboardMarkup.setKeyboard(rows);
+
+        return keyboardMarkup;
+    }
+
+    public InlineKeyboardMarkup createPlayButtonKeyboard() {
+        InlineKeyboardButton playButton = new InlineKeyboardButton();
+        playButton.setText("Играть");
+        playButton.setCallbackData("play_discount_game");
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(playButton);
+
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        rows.add(row);
 
         InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
         keyboardMarkup.setKeyboard(rows);
