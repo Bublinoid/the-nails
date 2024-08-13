@@ -103,9 +103,18 @@ public class InlineKeyboardMarkupBuilder {
     public InlineKeyboardMarkup createDateSelectionKeyboard(Set<LocalDate> occupiedDates) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         LocalDate startDate = LocalDate.now();
+        LocalTime currentTime = LocalTime.now();
+        LocalTime cutoffTime = LocalTime.of(18, 0);
 
         for (int i = 0; i < 15; i++) {
             LocalDate date = startDate.plusDays(i);
+
+            // Check if the date is today and if the current time is after 18:00
+            if (date.equals(startDate) && currentTime.isAfter(cutoffTime)) {
+                logger.info("Skipping today's date {} because the current time is after 18:00", date);
+                continue;
+            }
+
             if (date.getDayOfWeek().getValue() >= 1 && date.getDayOfWeek().getValue() <= 5) {
                 if (!occupiedDates.contains(date)) {
                     InlineKeyboardButton dateButton = new InlineKeyboardButton();
@@ -125,6 +134,7 @@ public class InlineKeyboardMarkupBuilder {
         keyboardMarkup.setKeyboard(rows);
         return keyboardMarkup;
     }
+
 
     public InlineKeyboardMarkup createTimeSelectionKeyboard(LocalDate selectedDate, Set<LocalTime> occupiedTimes) {
         logger.info("Occupied times for date {}: {}", selectedDate, occupiedTimes);
