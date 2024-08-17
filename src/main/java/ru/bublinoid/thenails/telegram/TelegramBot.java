@@ -118,7 +118,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
         } else if (callbackData.equals("my_bookings")) {
-            // Вывод списка записей
+
             String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
             messageService.sendMarkdownMessage(chatId, myBookingsInfo);
 
