@@ -12,6 +12,7 @@ import ru.bublinoid.thenails.config.BotConfig;
 import ru.bublinoid.thenails.content.BookingInfoProvider;
 import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.service.BookingService;
+import ru.bublinoid.thenails.service.DiscountService;
 import ru.bublinoid.thenails.service.MessageService;
 
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final BotConfig botConfig;
     private final MessageService messageService;
     private final BookingService bookingService;
+    private final DiscountService discountService;
     private final BookingInfoProvider bookingInfoProvider;
     private final Map<Long, Boolean> awaitingEmailInput = new HashMap<>();
     private final Map<Long, Boolean> awaitingConfirmationCodeInput = new HashMap<>();
@@ -105,6 +107,15 @@ public class TelegramBot extends TelegramLongPollingBot {
             bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
             messageService.sendMainMenu(chatId, firstName);
+
+        } else if ("discount".equals(callbackData)) {
+            // Вызов нового метода для отправки информации о скидке
+            messageService.sendDiscountInfo(chatId);
+        } else if ("play_discount_game".equals(callbackData)) {
+            // Здесь можно добавить логику игры
+            discountService.playDiscountGame(chatId);
+            messageService.sendMainMenu(chatId, firstName);
+
 
         } else if (callbackData.equals("my_bookings")) {
             // Вывод списка записей
