@@ -111,7 +111,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
             messageService.sendMarkdownMessage(chatId, myBookingsInfo);
 
-            // Отправляем клавиатуру с кнопками "Удалить запись" и "Главное меню"
+
             InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
             messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
         } else if (callbackData.equals("delete_booking")) {
