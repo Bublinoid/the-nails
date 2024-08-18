@@ -2,6 +2,11 @@ package ru.bublinoid.thenails.content;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * Provides messages related to the booking process.
+ */
+
+
 @Component
 public class BookingInfoProvider {
 

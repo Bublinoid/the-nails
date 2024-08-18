@@ -10,6 +10,9 @@ import ru.bublinoid.thenails.config.EmailConfig;
 
 import java.util.Properties;
 
+/**
+ * Component responsible for sending emails using SMTP configuration provided by EmailConfig.
+ */
 @Component
 public class EmailSender {
 
@@ -27,7 +30,7 @@ public class EmailSender {
         try {
             MimeMessage message = createMessage(session, to, subject, content);
             Transport.send(message);
-            log.info("Email sent successfully to {}", to);
+            log.debug("Email sent successfully to {}", to);
         } catch (MessagingException e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
         }

@@ -16,13 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Builds various inline keyboards for Telegram bot interactions.
+ */
+
 @Component
 public class InlineKeyboardMarkupBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
 
-
     public InlineKeyboardMarkup createMainMenuKeyboard() {
+        //TODO: вынести создание кнопок в отдельный метод
         InlineKeyboardButton servicesButton = new InlineKeyboardButton();
         servicesButton.setText("Услуги");
         servicesButton.setCallbackData("services");
@@ -61,6 +65,7 @@ public class InlineKeyboardMarkupBuilder {
         List<InlineKeyboardButton> row4 = new ArrayList<>();
         row4.add(myBookingsButton);
 
+        //TODO: вынести создание строк и добавление их в список в отдельный метод
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         rows.add(row1);
         rows.add(row2);
@@ -151,26 +156,26 @@ public class InlineKeyboardMarkupBuilder {
         LocalTime startTime = LocalTime.of(10, 0);
         LocalTime endTime = LocalTime.of(18, 0);
 
-        // Если выбранная дата - сегодня, начинаем с текущего времени плюс один час
+        // If the selected date is today, start from the current time plus one hour
         if (selectedDate.equals(LocalDate.now())) {
             LocalTime now = LocalTime.now().truncatedTo(ChronoUnit.HOURS).plusHours(1);
             startTime = now.isAfter(startTime) ? now : startTime;
         }
 
-        // Генерируем кнопки для доступных временных слотов
+        // Generate buttons for available time slots
         List<InlineKeyboardButton> row = new ArrayList<>();
         while (startTime.isBefore(endTime) || startTime.equals(endTime)) {
             logger.info("Checking time slot: {}", startTime);
             if (!occupiedTimes.contains(startTime)) {
                 InlineKeyboardButton timeButton = new InlineKeyboardButton();
                 timeButton.setText(startTime.toString());
-                timeButton.setCallbackData("time_" + startTime.toString());
+                timeButton.setCallbackData("time_" + startTime);
                 row.add(timeButton);
             } else {
                 logger.info("Time slot {} is occupied", startTime);
             }
 
-            // Добавляем ряд кнопок, если он заполнен (максимум 3 кнопки в ряду)
+            // Add the row if it is full (maximum 3 buttons per row)
             if (row.size() == 3) {
                 rows.add(new ArrayList<>(row));
                 row.clear();
@@ -179,7 +184,7 @@ public class InlineKeyboardMarkupBuilder {
             startTime = startTime.plusHours(1);
         }
 
-        // Добавляем оставшиеся кнопки (если есть)
+        // Add remaining buttons (if any)
         if (!row.isEmpty()) {
             rows.add(row);
         }
@@ -194,7 +199,7 @@ public class InlineKeyboardMarkupBuilder {
     public InlineKeyboardMarkup createConfirmationKeyboard() {
         InlineKeyboardButton confirmButton = new InlineKeyboardButton();
         confirmButton.setText("Подтвердить запись");
-        confirmButton.setCallbackData("confirm_booking"); // Callback data для обработки нажатия кнопки
+        confirmButton.setCallbackData("confirm_booking");
 
         List<InlineKeyboardButton> row = new ArrayList<>();
         row.add(confirmButton);
@@ -239,7 +244,7 @@ public class InlineKeyboardMarkupBuilder {
         for (Booking booking : bookings) {
             InlineKeyboardButton bookingButton = new InlineKeyboardButton();
             bookingButton.setText(booking.getService() + " - " + booking.getDate() + " " + booking.getTime());
-            bookingButton.setCallbackData("delete_" + booking.getHash()); // Используем уникальный ID записи
+            bookingButton.setCallbackData("delete_" + booking.getHash()); // Use the unique booking hash
 
             List<InlineKeyboardButton> row = new ArrayList<>();
             row.add(bookingButton);

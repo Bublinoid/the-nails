@@ -42,7 +42,7 @@ public class Booking {
     @PrePersist
     public void prePersist() {
         if (this.hash == null) {
-            this.hash = UUID.randomUUID();  // Генерация нового UUID, если он не был установлен
+            this.hash = UUID.randomUUID();
         }
         if (this.insertDt == null) {
             this.insertDt = LocalDateTime.now();

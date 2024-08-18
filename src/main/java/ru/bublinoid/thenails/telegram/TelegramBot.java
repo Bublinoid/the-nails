@@ -14,9 +14,9 @@ import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.service.BookingService;
 import ru.bublinoid.thenails.service.DiscountService;
 import ru.bublinoid.thenails.service.MessageService;
+import ru.bublinoid.thenails.utils.EmailValidator;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
@@ -54,6 +54,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         return botConfig.getToken();
     }
 
+    /**
+     * Handles incoming updates (messages or callback queries) from users.
+     *
+     * @param update the update received from Telegram API
+     */
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -63,6 +68,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Handles text messages received from users.
+     *
+     * @param update the update containing the text message
+     */
     private void handleTextMessage(Update update) {
         String messageText = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
@@ -80,6 +90,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void handleCallbackQuery(Update update) {
+        //TODO: сделать нормальную обработку команд через функ. интерфейс + создать карту команд для обработки
         String callbackData = update.getCallbackQuery().getData();
         long chatId = update.getCallbackQuery().getMessage().getChatId();
         String firstName = update.getCallbackQuery().getMessage().getChat().getFirstName();
@@ -102,35 +113,38 @@ public class TelegramBot extends TelegramLongPollingBot {
             LocalDate date = LocalDate.parse(selectedDates.get(chatId));
             LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
 
-            // Сохраняем бронирование в базе данных
+            // Save the booking in the database
             bookingService.saveBooking(chatId, service, date, time);
             bookingService.confirmBooking(chatId, service, date, time);
             messageService.sendMarkdownMessage(chatId, "Ваша запись подтверждена!");
             messageService.sendMainMenu(chatId, firstName);
 
         } else if ("discount".equals(callbackData)) {
-            // Вызов нового метода для отправки информации о скидке
             messageService.sendDiscountInfo(chatId);
+
         } else if ("play_discount_game".equals(callbackData)) {
-            // Здесь можно добавить логику игры
             discountService.playDiscountGame(chatId);
             messageService.sendMainMenu(chatId, firstName);
 
 
         } else if (callbackData.equals("my_bookings")) {
+            List<Booking> bookings = bookingService.getBookingsByChatId(chatId);
+            if (bookings.isEmpty()) {
+                messageService.sendMarkdownMessage(chatId, "У вас нет записей.");
+                messageService.sendMainMenu(chatId, firstName);
+            } else {
+                String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
+                messageService.sendMarkdownMessage(chatId, myBookingsInfo);
 
-            String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
-            messageService.sendMarkdownMessage(chatId, myBookingsInfo);
-
-
-            InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
-            messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
+                InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
+                messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
+            }
         } else if (callbackData.equals("delete_booking")) {
             List<Booking> bookings = bookingService.getBookingsByChatId(chatId);
             InlineKeyboardMarkup keyboard = messageService.createBookingsKeyboard(bookings);
             messageService.sendMessageWithKeyboard(chatId, "Выберите запись для удаления:", keyboard);
         } else if (callbackData.startsWith("delete_")) {
-            // Обработка удаления записи по hash
+            // Handle booking deletion by hash
             try {
                 String bookingHash = callbackData.substring(7);
                 bookingService.deleteBookingByHash(UUID.fromString(bookingHash));
@@ -163,7 +177,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     selectedServices.put(chatId, callbackData);
                     Set<LocalDate> occupiedDates = bookingService.getOccupiedDates();
 
-                    // Передаем список занятых дат в метод sendDateSelection
+                    // Pass the list of occupied dates to sendDateSelection method
                     messageService.sendDateSelection(chatId, occupiedDates);
                     break;
                 default:
@@ -177,31 +191,38 @@ public class TelegramBot extends TelegramLongPollingBot {
         String service = TelegramBot.getServiceNames().getOrDefault(selectedServices.get(chatId), "Услуга не выбрана");
         LocalDate date = LocalDate.parse(selectedDates.get(chatId));
         LocalTime time = LocalTime.parse(selectedTimes.get(chatId));
-
-        // Используем MessageService для отправки подтверждения
         messageService.sendConfirmationRequest(chatId, service, date, time);
     }
 
 
     private void processEmailInput(long chatId, String email) {
-        awaitingEmailInput.put(chatId, false);
-        bookingService.handleEmailInput(chatId, email);
-        awaitingConfirmationCodeInput.put(chatId, true);
+        if (EmailValidator.isValid(email)) {
+            awaitingEmailInput.put(chatId, false);
+            bookingService.handleEmailInput(chatId, email);
+            awaitingConfirmationCodeInput.put(chatId, true);
+        } else {
+            logger.warn("Received invalid email: {} from chatId: {}", email, chatId);
+            messageService.sendInvalidEmailMessage(chatId);
+            awaitingEmailInput.put(chatId, true);
+            awaitingConfirmationCodeInput.put(chatId, false); // Reset confirmation code awaiting flag
+        }
     }
 
     private void processConfirmationCodeInput(long chatId, String code) {
-        awaitingConfirmationCodeInput.put(chatId, false);
-        bookingService.confirmEmailCode(chatId, code);
+        if (awaitingConfirmationCodeInput.getOrDefault(chatId, false)) {
+            bookingService.confirmEmailCode(chatId, code);
+            awaitingConfirmationCodeInput.put(chatId, false);
+        } else {
+            logger.warn("Attempted confirmation code input without prior email input for chatId: {}", chatId);
+            messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
+        }
     }
 
     private void processCommand(long chatId, String firstName, String command) {
-        switch (command) {
-            case "/start":
-                startCommandReceived(chatId, firstName);
-                break;
-            default:
-                messageService.sendMainMenu(chatId, firstName);
-                break;
+        if (command.equals("/start")) {
+            startCommandReceived(chatId, firstName);
+        } else {
+            messageService.sendMainMenu(chatId, firstName);
         }
     }
 
@@ -214,7 +235,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private void requestEmailInput(Long chatId, String name) {
         String bookingInfo = bookingInfoProvider.getRequestEmailMessage();
-        logger.info("Requesting email input from chatId: {}, name: {}", chatId, name);
+        logger.debug("Requesting email input from chatId: {}, name: {}", chatId, name);
         messageService.sendMarkdownMessage(chatId, bookingInfo);
         awaitingEmailInput.put(chatId, true);
     }
