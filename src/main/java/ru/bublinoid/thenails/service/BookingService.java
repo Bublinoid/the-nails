@@ -7,12 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.repository.BookingRepository;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.LocalDate;;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+
+
+/**
+ * Service class for managing bookings.
+ */
 
 
 @Service
@@ -37,16 +40,25 @@ public class BookingService {
         emailService.confirmEmailCode(chatId, code);
     }
 
+    /**
+     * Saves a new booking
+     *
+     * @param chatId  the chat ID of the user.
+     * @param service the service booked.
+     * @param date    the date of the booking.
+     * @param time    the time of the booking.
+     */
     public void saveBooking(Long chatId, String service, LocalDate date, LocalTime time) {
         Booking booking = new Booking();
-        booking.setHash(UUID.randomUUID()); // Генерация нового хеша для каждой новой записи
+        booking.setHash(UUID.randomUUID()); // Generate a new hash for each booking
         booking.setChatId(chatId);
         booking.setService(service);
         booking.setDate(date);
         booking.setTime(time);
-        booking.setConfirm(false); // Изначально запись не подтверждена
+        booking.setConfirm(false); // Initially, the booking is not confirmed
 
         bookingRepository.save(booking);
+        logger.debug("Booking saved for chatId: {}, service: {}, date: {}, time: {}", chatId, service, date, time);
     }
 
     public void confirmBooking(Long chatId, String service, LocalDate date, LocalTime time) {
@@ -56,43 +68,55 @@ public class BookingService {
             Booking booking = bookingOptional.get();
             booking.setConfirm(true);
             bookingRepository.save(booking);
+            logger.debug("Booking confirmed for chatId: {}, service: {}, date: {}, time: {}", chatId, service, date, time);
         } else {
             throw new IllegalArgumentException("Booking not found for chatId: " + chatId + ", service: " + service + ", date: " + date + ", time: " + time);
         }
     }
 
+    /**
+     * Retrieves the set of dates that are fully booked.
+     *
+     * @return a set of occupied dates.
+     */
     public Set<LocalDate> getOccupiedDates() {
-        logger.info("Retrieving occupied dates");
+        logger.debug("Retrieving occupied dates");
 
-        // Получаем все записи с подтвержденными бронированиями
+        // Get all bookings that are confirmed
         List<Booking> confirmedBookings = bookingRepository.findAll().stream()
                 .filter(Booking::getConfirm)
                 .toList();
 
-        // Выбираем только те даты, для которых уже все время занято
+        // Select only those dates where all time slots are occupied
         Set<LocalDate> occupiedDates = confirmedBookings.stream()
                 .collect(Collectors.groupingBy(Booking::getDate, Collectors.counting()))
                 .entrySet().stream()
-                .filter(entry -> entry.getValue() >= 9) // предполагается, что все слоты заняты, если 9 или более записей на дату
+                .filter(entry -> entry.getValue() >= 9) // Assume all slots are occupied if there are 9 or more bookings on a date
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
 
-        logger.info("Occupied dates: {}", occupiedDates);
+        logger.debug("Occupied dates: {}", occupiedDates);
         return occupiedDates;
     }
 
+    /**
+     * Retrieves the set of times that are fully booked on a specific date.
+     *
+     * @param date the date to check.
+     * @return a set of occupied times on the given date.
+     */
     public Set<LocalTime> getOccupiedTimesForDate(LocalDate date) {
-        logger.info("Retrieving occupied times for date: {}", date);
+        logger.debug("Retrieving occupied times for date: {}", date);
 
-        // Получаем все подтвержденные бронирования на указанную дату
+        // Get all confirmed bookings for the specified date
         List<Booking> bookings = bookingRepository.findByDateAndConfirmTrue(date);
 
-        // Извлекаем занятые временные слоты
+        // Extract the occupied time slots
         Set<LocalTime> occupiedTimes = bookings.stream()
                 .map(Booking::getTime)
                 .collect(Collectors.toSet());
 
-        logger.info("Occupied times for date {}: {}", date, occupiedTimes);
+        logger.debug("Occupied times for date {}: {}", date, occupiedTimes);
         return occupiedTimes;
     }
 
@@ -108,6 +132,7 @@ public class BookingService {
                         .append(", Время: ").append(booking.getTime())
                         .append("\n");
             }
+            logger.debug("Bookings found for chatId: {}", chatId);
             return sb.toString();
         }
     }
@@ -117,8 +142,9 @@ public class BookingService {
 
         if (bookingOptional.isPresent()) {
             bookingRepository.delete(bookingOptional.get());
+            logger.debug("Booking deleted for hash: {}", hash);
         } else {
-            throw new IllegalArgumentException("Запись не найдена для hash: " + hash);
+            throw new IllegalArgumentException("Booking not found for hash: " + hash);
         }
     }
 

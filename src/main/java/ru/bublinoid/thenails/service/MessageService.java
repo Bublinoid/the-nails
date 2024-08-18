@@ -18,6 +18,11 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Service class responsible for handling messages sent to users via Telegram.
+ * This includes sending plain text messages, messages with inline keyboards, and various informational messages.
+ */
+
 @Service
 public class MessageService {
 
@@ -46,6 +51,12 @@ public class MessageService {
         this.discountInfoProvider = discountInfoProvider;
     }
 
+    /**
+     * Sets the Telegram bot instance.
+     * This is done lazily to avoid circular dependencies.
+     *
+     * @param telegramBot the Telegram bot instance.
+     */
     @Lazy
     @Autowired
     public void setTelegramBot(TelegramBot telegramBot) {
@@ -65,8 +76,14 @@ public class MessageService {
     }
 
 
+    /**
+     * Sends a markdown-formatted message to the user.
+     *
+     * @param chatId     the chat ID of the user.
+     * @param textToSend the text to send.
+     */
     public void sendMarkdownMessage(Long chatId, String textToSend) {
-        logger.info("Sending message to chatId: {}, text: {}", chatId, textToSend);
+        logger.debug("Sending message to chatId: {}, text: {}", chatId, textToSend);
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
@@ -87,7 +104,7 @@ public class MessageService {
 
         try {
             telegramBot.execute(sendMessage);
-            logger.info("Message with keyboard sent successfully to chatId: {}", chatId);
+            logger.debug("Message with keyboard sent successfully to chatId: {}", chatId);
         } catch (TelegramApiException e) {
             logger.error("Error occurred while sending message with keyboard to chatId: {}", chatId, e);
         }
@@ -95,48 +112,48 @@ public class MessageService {
 
     public void sendServicesInfo(Long chatId, String name) {
         String servicesInfo = servicesInfoProvider.getServicesInfo();
-        logger.info("Sending services info to chatId: {}, name: {}", chatId, name);
+        logger.debug("Sending services info to chatId: {}, name: {}", chatId, name);
         sendMarkdownMessage(chatId, servicesInfo);
         sendMainMenu(chatId, name);
     }
 
     public void sendAboutUsInfo(Long chatId, String name) {
         String aboutUsInfo = aboutUsInfoProvider.getAboutUsInfo();
-        logger.info("Sending about us info to chatId: {}, name: {}", chatId, name);
+        logger.debug("Sending about us info to chatId: {}, name: {}", chatId, name);
         sendMarkdownMessage(chatId, aboutUsInfo);
         sendMainMenu(chatId, name);
     }
 
     public void sendContactsInfo(Long chatId, String name) {
         String contactsInfo = contactsInfoProvider.getContactsInfo();
-        logger.info("Sending contacts info to chatId: {}, name: {}", chatId, name);
+        logger.debug("Sending contacts info to chatId: {}, name: {}", chatId, name);
         sendMarkdownMessage(chatId, contactsInfo);
         sendMainMenu(chatId, name);
     }
 
     public void sendMainMenu(Long chatId, String name) {
-        logger.info("Sending main menu to chatId: {}, name: {}", chatId, name);
+        logger.debug("Sending main menu to chatId: {}, name: {}", chatId, name);
         sendMessageWithKeyboard(chatId, "Что бы вы хотели сделать дальше?", inlineKeyboardMarkupBuilder.createMainMenuKeyboard());
     }
 
     public void sendInvalidEmailMessage(long chatId) {
         String message = bookingInfoProvider.getInvalidEmailMessage();
-        logger.info("Sending invalid email message to chatId: {}", chatId);
+        logger.warn("Sending invalid email message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
     }
 
     public void sendEmailSavedMessage(long chatId) {
         String message = bookingInfoProvider.getEmailSavedMessage();
-        logger.info("Sending email saved message to chatId: {}", chatId);
+        logger.debug("Sending email saved message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
     }
 
     public void sendEmailConfirmedMessage(long chatId) {
         String message = bookingInfoProvider.getEmailConfirmedMessage();
-        logger.info("Sending email confirmed message to chatId: {}", chatId);
+        logger.debug("Sending email confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
 
-        logger.info("Attempting to send service options to chatId: {}", chatId);
+        logger.debug("Attempting to send service options to chatId: {}", chatId);
         sendServiceOptions(chatId);
     }
 
@@ -144,7 +161,7 @@ public class MessageService {
         InlineKeyboardMarkup serviceOptionsKeyboard = inlineKeyboardMarkupBuilder.createServiceOptionsKeyboard();
         if (serviceOptionsKeyboard != null && !serviceOptionsKeyboard.getKeyboard().isEmpty()) {
             sendMessageWithKeyboard(chatId, "Пожалуйста, выберите одну из услуг:", serviceOptionsKeyboard);
-            logger.info("Service options sent successfully to chatId: {}", chatId);
+            logger.debug("Service options sent successfully to chatId: {}", chatId);
         } else {
             logger.warn("Failed to create service options keyboard or keyboard is empty for chatId: {}", chatId);
         }
@@ -152,19 +169,19 @@ public class MessageService {
 
     public void sendInvalidConfirmationCodeMessage(long chatId) {
         String message = bookingInfoProvider.getInvalidCodeMessage();
-        logger.info("Sending invalid confirmation code message to chatId: {}", chatId);
+        logger.warn("Sending invalid confirmation code message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
     }
 
     public void sendInvalidConfirmationCodeFormatMessage(long chatId) {
         String message = bookingInfoProvider.getInvalidConfirmationCodeFormatMessage();
-        logger.info("Sending invalid confirmation code format message to chatId: {}", chatId);
+        logger.warn("Sending invalid confirmation code format message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
     }
 
     public void sendEmailAlreadyConfirmedMessage(long chatId) {
         String message = "Ваш e-mail уже подтвержден.";
-        logger.info("Sending email already confirmed message to chatId: {}", chatId);
+        logger.debug("Sending email already confirmed message to chatId: {}", chatId);
         sendMarkdownMessage(chatId, message);
         sendServiceOptions(chatId);
     }
@@ -183,15 +200,14 @@ public class MessageService {
         String confirmationMessage = "Вы выбрали услугу: " + service + " на дату: " + date + " в " + time;
         InlineKeyboardMarkup confirmationKeyboard = inlineKeyboardMarkupBuilder.createConfirmationKeyboard();
         sendMessageWithKeyboard(chatId, confirmationMessage, confirmationKeyboard);
-        logger.info("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
+        logger.debug("Sent confirmation request for service: {}, date: {}, time: {} to chatId: {}", service, date, time, chatId);
     }
 
     public void sendDiscountInfo(Long chatId) {
         String discountInfo = discountInfoProvider.getDiscountInfo();
-        logger.info("Sending discount info to chatId: {}", chatId);
+        logger.debug("Sending discount info to chatId: {}", chatId);
         InlineKeyboardMarkup playButtonKeyboard = inlineKeyboardMarkupBuilder.createPlayButtonKeyboard();
         sendMessageWithKeyboard(chatId, discountInfo, playButtonKeyboard);
     }
-
 
 }

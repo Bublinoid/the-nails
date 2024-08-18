@@ -9,6 +9,9 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import ru.bublinoid.thenails.telegram.TelegramBot;
 
+/**
+ * Initializes the Telegram bot on application startup.
+ */
 @Component
 public class BotInitializer {
 

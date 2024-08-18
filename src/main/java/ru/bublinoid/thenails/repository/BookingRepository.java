@@ -21,9 +21,5 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findByDateAndConfirmTrue(LocalDate date);
 
-    @Query("SELECT b.date FROM Booking b WHERE b.confirm = true")
-    Set<LocalDate> findOccupiedDates();
 
-    @Query("SELECT b.time FROM Booking b WHERE b.date = :date AND b.confirm = true")
-    Set<LocalTime> findOccupiedTimesByDate(LocalDate date);
 }

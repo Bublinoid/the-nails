@@ -19,6 +19,11 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Service class responsible for handling email-related operations including
+ * email validation, sending confirmation codes, and confirming email addresses.
+ */
+
 @Service
 public class EmailService {
 
@@ -36,31 +41,49 @@ public class EmailService {
         this.messageService = messageService;
     }
 
+    /**
+     * Handles the email input from the user.
+     * a confirmation code or informs the user if the email is invalid.
+     *
+     * @param chatId the chat ID of the user.
+     * @param email  the email address provided by the user.
+     */
     @Transactional
     public void handleEmailInput(long chatId, String email) {
+        // TODO: перенести проверку подтвержденного email на этап выше
         if (EmailValidator.isValid(email)) {
             Email emailEntity = findOrCreateEmailEntity(chatId, email);
 
             if (emailEntity.getConfirm()) {
-                logger.info("Email уже подтвержден для chatId: {}", chatId);
+                logger.debug("Email already confirmed for chatId: {}", chatId);
                 messageService.sendEmailAlreadyConfirmedMessage(chatId);
                 return;
             }
 
             saveEmailAndSendConfirmation(emailEntity, chatId, email);
         } else {
-            logger.warn("Получен недействительный email: {} от chatId: {}", email, chatId);
+            logger.warn("Received invalid email: {} from chatId: {}", email, chatId);
             messageService.sendInvalidEmailMessage(chatId);
+
+            // Reset confirmation code waiting state as the email is invalid
+            telegramBot.setAwaitingConfirmationCodeInput(chatId, false);
         }
     }
 
+
+    /**
+     * Handles the confirmation code input from the user.
+     *
+     * @param chatId the chat ID of the user.
+     * @param code   the confirmation code provided by the user.
+     */
     @Transactional
     public void confirmEmailCode(long chatId, String code) {
-        // Проверяем, что код состоит из 4 цифр
+        // Check if the code is 4 digits long
         if (code.length() != 4 || !code.matches("\\d{4}")) {
-            logger.warn("Неправильный формат кода подтверждения для chatId: {}", chatId);
+            logger.warn("Invalid confirmation code format for chatId: {}", chatId);
             messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
-            telegramBot.setAwaitingConfirmationCodeInput(chatId, true); // Ожидаем повторный ввод кода
+            telegramBot.setAwaitingConfirmationCodeInput(chatId, true);// Expecting re-entry of the code
             return;
         }
 
@@ -71,13 +94,13 @@ public class EmailService {
             if (emailEntityOptional.isPresent()) {
                 validateAndConfirmCode(emailEntityOptional.get(), inputCode, chatId);
             } else {
-                logger.warn("Не найден email для chatId: {}", chatId);
+                logger.warn("Email not found for chatId: {}", chatId);
                 messageService.sendInvalidEmailMessage(chatId);
             }
         } catch (NumberFormatException e) {
-            logger.warn("Неправильный формат кода подтверждения для chatId: {}", chatId);
+            logger.debug("Invalid confirmation code format for chatId: {}", chatId);
             messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
-            telegramBot.setAwaitingConfirmationCodeInput(chatId, true); // Ожидаем повторный ввод кода
+            telegramBot.setAwaitingConfirmationCodeInput(chatId, true); // Expecting re-entry of the code
         }
     }
 
@@ -93,7 +116,7 @@ public class EmailService {
         UUID hash = emailEntity.generateHash();
         emailEntity.setHash(hash);
         emailEntity.setConfirm(false);
-        logger.info("Generated new hash for email input: {}", hash);
+        logger.debug("Generated new hash for email input: {}", hash);
         return emailEntity;
     }
 
@@ -102,12 +125,12 @@ public class EmailService {
         emailEntity.setConfirmationCode(confirmationCode);
 
         emailRepository.save(emailEntity);
-        logger.info("Сохранение email с хэшем: {}", emailEntity.getHash());
+        logger.info("Saved email with hash: {}", emailEntity.getHash());
 
         String subject = "Ваш код подтверждения";
         String content = buildConfirmationEmailContent(confirmationCode);
         emailSender.sendEmail(email, subject, content);
-        logger.info("Отправлен email на: {}", email);
+        logger.debug("Sent confirmation email to: {}", email);
 
         messageService.sendEmailSavedMessage(chatId);
     }
@@ -117,28 +140,28 @@ public class EmailService {
         if (storedCode == inputCode) {
             emailEntity.setConfirm(true);
             emailRepository.save(emailEntity);
-            logger.info("Код подтверждения верный для chatId: {}", chatId);
+            logger.debug("Confirmation code is correct for chatId: {}", chatId);
             messageService.sendEmailConfirmedMessage(chatId);
         } else {
-            logger.warn("Неверный код подтверждения для chatId: {}", chatId);
+            logger.debug("Incorrect confirmation code for chatId: {}", chatId);
             messageService.sendInvalidConfirmationCodeMessage(chatId);
             telegramBot.setAwaitingConfirmationCodeInput(chatId, true);
         }
     }
 
+    /**
+     * Builds the content of the confirmation email using a template.
+     *
+     * @param confirmationCode the confirmation code to include in the email.
+     * @return the content of the confirmation email.
+     */
     private String buildConfirmationEmailContent(String confirmationCode) {
         try {
             String template = new String(Files.readAllBytes(Paths.get("src/main/resources/email/confirmation_email_template.html")));
             return template.replace("{{confirmationCode}}", confirmationCode);
         } catch (IOException e) {
-            logger.error("Ошибка чтения шаблона email", e);
-            throw new RuntimeException("Ошибка чтения шаблона email", e);
+            logger.error("Error reading email template", e);
+            throw new RuntimeException("Error reading email template", e);
         }
-    }
-
-    public UUID getHashByChatId(Long chatId) {
-        return emailRepository.findByChatId(chatId)
-                .map(Email::getHash)
-                .orElseThrow(() -> new IllegalArgumentException("Email not found for chatId: " + chatId));
     }
 }

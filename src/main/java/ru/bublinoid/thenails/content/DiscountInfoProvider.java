@@ -2,6 +2,10 @@ package ru.bublinoid.thenails.content;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * Provides information about the discount offer.
+ */
+
 @Component
 public class DiscountInfoProvider {
 

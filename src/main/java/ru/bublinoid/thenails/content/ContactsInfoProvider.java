@@ -2,6 +2,10 @@ package ru.bublinoid.thenails.content;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * Provides contact information.
+ */
+
 @Component
 public class ContactsInfoProvider {
 

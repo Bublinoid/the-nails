@@ -14,6 +14,7 @@ import ru.bublinoid.thenails.model.Booking;
 import ru.bublinoid.thenails.service.BookingService;
 import ru.bublinoid.thenails.service.DiscountService;
 import ru.bublinoid.thenails.service.MessageService;
+import ru.bublinoid.thenails.utils.EmailValidator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -118,13 +119,17 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
         } else if (callbackData.equals("my_bookings")) {
+            List<Booking> bookings = bookingService.getBookingsByChatId(chatId);
+            if (bookings.isEmpty()) {
+                messageService.sendMarkdownMessage(chatId, "У вас нет записей.");
+                messageService.sendMainMenu(chatId, firstName);
+            } else {
+                String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
+                messageService.sendMarkdownMessage(chatId, myBookingsInfo);
 
-            String myBookingsInfo = bookingService.getMyBookingsInfo(chatId);
-            messageService.sendMarkdownMessage(chatId, myBookingsInfo);
-
-
-            InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
-            messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
+                InlineKeyboardMarkup keyboard = messageService.createBookingOptionsKeyboard();
+                messageService.sendMessageWithKeyboard(chatId, "Выберите действие:", keyboard);
+            }
         } else if (callbackData.equals("delete_booking")) {
             List<Booking> bookings = bookingService.getBookingsByChatId(chatId);
             InlineKeyboardMarkup keyboard = messageService.createBookingsKeyboard(bookings);
@@ -184,14 +189,26 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 
     private void processEmailInput(long chatId, String email) {
-        awaitingEmailInput.put(chatId, false);
-        bookingService.handleEmailInput(chatId, email);
-        awaitingConfirmationCodeInput.put(chatId, true);
+        if (EmailValidator.isValid(email)) {
+            awaitingEmailInput.put(chatId, false);
+            bookingService.handleEmailInput(chatId, email);
+            awaitingConfirmationCodeInput.put(chatId, true);
+        } else {
+            logger.warn("Получен недействительный email: {} от chatId: {}", email, chatId);
+            messageService.sendInvalidEmailMessage(chatId);
+            awaitingEmailInput.put(chatId, true);
+            awaitingConfirmationCodeInput.put(chatId, false); // Сброс ожидания кода подтверждения
+        }
     }
 
     private void processConfirmationCodeInput(long chatId, String code) {
-        awaitingConfirmationCodeInput.put(chatId, false);
-        bookingService.confirmEmailCode(chatId, code);
+        if (awaitingConfirmationCodeInput.getOrDefault(chatId, false)) {
+            bookingService.confirmEmailCode(chatId, code);
+            awaitingConfirmationCodeInput.put(chatId, false);
+        } else {
+            logger.warn("Попытка ввода кода подтверждения без предварительного ввода email для chatId: {}", chatId);
+            messageService.sendInvalidConfirmationCodeFormatMessage(chatId);
+        }
     }
 
     private void processCommand(long chatId, String firstName, String command) {
